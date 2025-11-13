@@ -1,0 +1,177 @@
+Przykład pakietu (czytelnie)
+
+
+| Transport Header | (7 bajtów)
+|------------------|
+| MessageCounter: 4B  |
+| SessionID: 2B       |
+| Flags: 1B           |
+
+| Application Header | (10 bajtów)
+|--------------------|
+| FabricID: 4B       |
+| NodeID: 2B         |
+| EndpointID: 1B     |
+| ClusterID: 2B      |
+| CommandID: 1B      |
+
+| Payload | N bajtów |
+
+| Pole             | Funkcja                                           | Podobne do w Matter |
+| ---------------- | ------------------------------------------------- | ------------------- |
+| `MessageCounter` | Unikalny numer wiadomości                         | Message Counter     |
+| `SessionID`      | Identyfikator sesji / połączenia                  | Session ID          |
+| `Flags`          | Bity kontrolne (ACK, retry, broadcast, encrypted) | Flags               |
+| `FabricID`       | Sieć / instalacja (np. dom)                       | Fabric ID           |
+| `NodeID`         | Urządzenie (np. gniazdko w piwnicy)               | Node ID             |
+| `EndpointID`     | Funkcja w urządzeniu (nprzekaźnik1, przekaźnik2)  | Endpoint            |
+| `ClusterID`      | Typ funkcji (np. On/Off)                          | Cluster             |
+| `CommandID`      | Akcja w klastrze                                  | Command             |
+
+
+
+⚙️ 1️⃣ Struktura Matter dla „Smart Plug z pomiarem mocy”
+┌─────────────────────────────────────┐
+│ Node (gniazdko)                     │  ← unikalny NodeID
+│ FabricID                             │  ← instalacja / sieć domowa
+│ Endpoints:                           │
+│   ├─ Endpoint 0: Basic Info          │  (Device Info, Identify)
+│   └─ Endpoint 1: SmartPlug           │
+│        ├─ Cluster 0x0006: OnOff      │  (włącz/wyłącz przekaźnik)
+│        │     ├─ Attribute 0x0000: OnOff (bool) 
+│        │     │   • EN: On/Off State
+│        │     │   • PL: Stan włącz/wyłącz
+│        │     ├─ Commands:
+│        │     │   0x01: On       → Włącz
+│        │     │   0x00: Off      → Wyłącz
+│        │     │   0x02: Toggle   → Zmień stan (przełącz)
+│        │     │   0x03: Read     → Odczytaj stan
+│        │
+│        └─ Cluster 0x0B04: Electrical Measurement
+│              ├─ Attribute 0x0505: ActivePower (int16)
+│              │   • EN: Active Power (W)
+│              │   • PL: Moc czynna (W)
+│              ├─ Attribute 0x0508: RMSVoltage (int16)
+│              │   • EN: RMS Voltage (V)
+│              │   • PL: Napięcie skuteczne (V)
+│              ├─ Attribute 0x050B: RMSCurrent (int16)
+│              │   • EN: RMS Current (mA)
+│              │   • PL: Prąd skuteczny (mA)
+│              ├─ Attribute 0x050D: PowerFactor (int8)
+│              │   • EN: Power Factor (0–100)
+│              │   • PL: Współczynnik mocy (0–100)
+│              ├─ Attribute 0x0510: ApparentPower (int16)
+│              │   • EN: Apparent Power (VA)
+│              │   • PL: Moc pozorna (VA)
+│              ├─ Attribute 0x0515: ReactivePower (int16)
+│              │   • EN: Reactive Power (VAR)
+│              │   • PL: Moc bierna (VAR)
+│              ├─ Attribute 0x051A: Energy (uint32)
+│              │   • EN: Energy Consumed (Wh)
+│              │   • PL: Energia zużyta (Wh)
+│              ├─ Attribute 0x051C: RMSFrequency (int16)
+│              │   • EN: Frequency (Hz)
+│              │   • PL: Częstotliwość (Hz)
+│              └─ Attribute 0x0520: CurrentSummation (uint32)
+│                  • EN: Total Current Summation (mAh)
+│                  • PL: Suma prądu całkowitego (mAh)
+└─────────────────────────────────────┘
+
+
+Czyli endpoint 1 (czyli „gniazdko 1”) ma dwa klastry:
+OnOff (sterowanie)
+ElectricalMeasurement (pomiary)
+
+PRZYKLADY RAMEK:
+
+Przykład 1: Ustaw stan przekaźnika (On/Off)
+
+Włączenie przekaźnika (On):
+| Pole           | Wartość    | Znaczenie     |
+| -------------- | ---------- | ------------- |
+| messageCounter | 0x00001236 | nowy pakiet   |
+| sessionId      | 0x0042     | sesja         |
+| flags          | 0x01       | wymagany ACK  |
+| fabricId       | 0xA1B2C3D4 | sieć          |
+| nodeId         | 0x0001     | gniazdko      |
+| endpointId     | 0x01       | przekaźnik 1  |
+| clusterId      | 0x0006     | OnOff Cluster |
+| attributeId    | 0x0000     | OnOff         |
+| commandId      | 0x01       | TurnOn        |
+| value          | 1          | włączony      |
+
+Wyłączenie przekaźnika (Off):
+| Pole           | Wartość    | Znaczenie     |
+| -------------- | ---------- | ------------- |
+| messageCounter | 0x00001237 | nowy pakiet   |
+| sessionId      | 0x0042     | sesja         |
+| flags          | 0x01       | wymagany ACK  |
+| fabricId       | 0xA1B2C3D4 | sieć          |
+| nodeId         | 0x0001     | gniazdko      |
+| endpointId     | 0x01       | przekaźnik 1  |
+| clusterId      | 0x0006     | OnOff Cluster |
+| attributeId    | 0x0000     | OnOff         |
+| commandId      | 0x02       | TurnOff       |
+| value          | 0          | wyłączony     |
+
+
+Przykład 2: Odczyt stanu przekaźnika (ReadAttribute)
+
+| Pole           | Wartość    | Znaczenie           |
+| -------------- | ---------- | ------------------- |
+| messageCounter | 0x00001234 | unikalny ID pakietu |
+| sessionId      | 0x0042     | sesja komunikacyjna |
+| flags          | 0x00       | brak                |
+| fabricId       | 0xA1B2C3D4 | nasza sieć          |
+| nodeId         | 0x0001     | gniazdko            |
+| endpointId     | 0x01       | przekaźnik 1        |
+| clusterId      | 0x0006     | OnOff Cluster       |
+| attributeId    | 0x0000     | OnOff               |
+| commandId      | 0x03       | ReadAttribute       |
+| value          | 0          | brak przy Read      |
+
+Odpowiedź (ReportAttribute):
+| Pole           | Wartość    | Znaczenie       |
+| -------------- | ---------- | --------------- |
+| messageCounter | 0x00001234 | ID żądania      |
+| sessionId      | 0x0042     | sesja           |
+| flags          | 0x00       | brak            |
+| fabricId       | 0xA1B2C3D4 | sieć            |
+| nodeId         | 0x0001     | gniazdko        |
+| endpointId     | 0x01       | przekaźnik 1    |
+| clusterId      | 0x0006     | OnOff Cluster   |
+| attributeId    | 0x0000     | OnOff           |
+| commandId      | 0x04       | ReportAttribute |
+| value          | 1          | włączony (true) |
+
+
+4️⃣ Przykład 3: Odczyt pomiarów (ActivePower)
+
+| Pole           | Wartość    | Znaczenie             |
+| -------------- | ---------- | --------------------- |
+| messageCounter | 0x00001235 | nowy pakiet           |
+| sessionId      | 0x0042     | sesja                 |
+| flags          | 0x00       | brak                  |
+| fabricId       | 0xA1B2C3D4 | sieć                  |
+| nodeId         | 0x0001     | gniazdko              |
+| endpointId     | 0x01       | smart plug            |
+| clusterId      | 0x0B04     | ElectricalMeasurement |
+| attributeId    | 0x0505     | ActivePower           |
+| commandId      | 0x03       | ReadAttribute         |
+| value          | 0          | brak przy Read        |
+
+Odpowiedź (ReportAttribute):
+
+| Pole           | Wartość    | Znaczenie             |
+| -------------- | ---------- | --------------------- |
+| messageCounter | 0x00001235 | ID żądania            |
+| sessionId      | 0x0042     | sesja                 |
+| flags          | 0x00       | brak                  |
+| fabricId       | 0xA1B2C3D4 | sieć                  |
+| nodeId         | 0x0001     | gniazdko              |
+| endpointId     | 0x01       | smart plug            |
+| clusterId      | 0x0B04     | ElectricalMeasurement |
+| attributeId    | 0x0505     | ActivePower           |
+| commandId      | 0x04       | ReportAttribute       |
+| value          | 42         | moc czynna w W        |
+
