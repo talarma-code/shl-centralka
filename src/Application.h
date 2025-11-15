@@ -1,12 +1,18 @@
 #pragma once
-#include "heater/HeaterEspNow.h"
+#include "NetworkTransport/EspNowTransport.h"
+#include "NetworkTransport/IMatterReceiver.h"
+#include "Heater/HeaterEspNow.h"
 
-class Application {
+
+class Application : public IMatterReceiver {
 public:
     Application();        // konstruktor
     void setup();         // setup Arduino
     void loop();          // loop Arduino
+    void handlePacket(const MatterLikePacket &pkt, const uint8_t *srcMac) override;
 
 private:
-    HeaterEspNow heater;
+    EspNowTransport transport;
+    HeaterEspNow heaterEspNow;
+
 };

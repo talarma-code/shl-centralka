@@ -50,10 +50,6 @@ MatterLikePacket MatterLike::createAckPacket(const MatterLikePacket& receivedPac
     return createPacket(receivedPacket.header.messageCounter, payload, 0x00); // flags=0
 }
 
-esp_err_t MatterLike::sendPacket(const uint8_t* macAddr, const MatterLikePacket& packet) {
-    return esp_now_send(macAddr, (uint8_t*)&packet, sizeof(MatterLikePacket));
-}
-
 // -------------------------------
 // Private helpers
 // -------------------------------

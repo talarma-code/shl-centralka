@@ -19,9 +19,6 @@ public:
 
     static MatterLikePacket createAckPacket(const MatterLikePacket& receivedPacket);
 
-    // Send packet via ESP-NOW
-    static esp_err_t sendPacket(const uint8_t* macAddr, const MatterLikePacket& packet);
-
 private:
     // -------------------------------
     // Private helpers
