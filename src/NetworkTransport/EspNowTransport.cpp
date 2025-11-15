@@ -2,35 +2,63 @@
 #include "../MatterLikeProtocol/MatterLikePacket.h"
 #include <cstring>
 #include <WiFi.h>
+#include <esp_wifi.h>
 
 
 static uint8_t MAX_ESP_NOW_FRAME = 250;
 
 IMatterReceiver* EspNowTransport::userReceiver = nullptr;
 
+static const uint8_t MAC_LOCAL[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; // talar0 - centrala
+static const uint8_t MAC_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
+
 
 bool EspNowTransport::begin() {
-    WiFi.mode(WIFI_STA); // must be in STA for ESP-NOW
+    // WiFi.mode(WIFI_STA); // must be in STA for ESP-NOW
 
+    // if (esp_now_init() != ESP_OK) {
+    //     Serial.println("ESP-NOW init failed");
+    //     return false;
+    // }
+
+        delay(300);
+
+    Serial.println("\n=== SHL Main Controller Start ===");
+
+    WiFi.mode(WIFI_STA);
+
+    // Ustaw własny MAC (NOWOŚĆ: esp_wifi_set_mac wymaga specjalnego include!)
+    if (esp_wifi_set_mac(WIFI_IF_STA, (uint8_t*)MAC_LOCAL) != ESP_OK) {
+        Serial.println("⚠ Could not set custom MAC!");
+    }
+
+    Serial.print("Local MAC set to: ");
+    Serial.printf("%02X:%02X:%02X:%02X:%02X:%02X\n",
+                   MAC_LOCAL[0], MAC_LOCAL[1], MAC_LOCAL[2],
+                   MAC_LOCAL[3], MAC_LOCAL[4], MAC_LOCAL[5]);
+
+    // Start ESP-NOW
     if (esp_now_init() != ESP_OK) {
-        Serial.println("ESP-NOW init failed");
+        Serial.println("❌ ESP-NOW init failed!");
         return false;
+    }
+
+      // Dodaj odbiornik (heater) jako PEER
+    esp_now_peer_info_t peerInfo = {};
+    memcpy(peerInfo.peer_addr, MAC_HEATER, 6);
+    peerInfo.channel = 0;  // ten sam co WiFi
+    peerInfo.encrypt = false;
+
+    if (esp_now_add_peer(&peerInfo) == ESP_OK) {
+        Serial.println("Peer added OK");
+    } else {
+        Serial.println("❌ Peer add FAILED!");
     }
 
     esp_now_register_recv_cb(onDataRecv);
     esp_now_register_send_cb(onDataSent);
 
-    uint8_t MAC_SHL_STEROWNIK_GRZALKI[] = { 0x44, 0x1D, 0x64, 0xFA, 0x2B, 0x28 };
 
-    if (!esp_now_is_peer_exist(MAC_SHL_STEROWNIK_GRZALKI)) {
-        esp_now_peer_info_t peerInfo = {};
-        memcpy(peerInfo.peer_addr, MAC_SHL_STEROWNIK_GRZALKI, 6);
-        peerInfo.channel = 0;
-        peerInfo.encrypt = false;
-        esp_now_add_peer(&peerInfo);
-
-        Serial.println("Peer auto-added!");
-    }
 
     Serial.println("ESP-NOW initialized successfully");
     return true;
