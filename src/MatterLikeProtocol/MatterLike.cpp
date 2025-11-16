@@ -8,17 +8,17 @@ uint32_t MatterLike::messageCounter = 1;
 // -------------------------------
 
 MatterLikePacket MatterLike::createTurnOnPacket(uint16_t nodeId, uint8_t endpointId) {
-    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, 0x01, 1);
+    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, CMD_ON);
     return createPacket(messageCounter++, payload, 0x01);
 }
 
 MatterLikePacket MatterLike::createTurnOffPacket(uint16_t nodeId, uint8_t endpointId) {
-    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, 0x02, 0);
+    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, CMD_OFF);
     return createPacket(messageCounter++, payload, 0x01);
 }
 
 MatterLikePacket MatterLike::createReadOnOffPacket(uint16_t nodeId, uint8_t endpointId) {
-    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, 0x03);
+    MatterLikePayload payload = createOnOffPayload(nodeId, endpointId, CMD_TOGGLE);
     return createPacket(messageCounter++, payload);
 }
 
@@ -67,7 +67,7 @@ MatterLikePayload MatterLike::createOnOffPayload(uint16_t nodeId, uint8_t endpoi
     payload.fabricId = DEFAULT_FABRIC_ID;
     payload.nodeId = nodeId;
     payload.endpointId = endpointId;
-    payload.clusterId = 0x0006; // OnOff Cluster
+    payload.clusterId = CLUSTER_ONOFF; // OnOff Cluster
     payload.attributeId = 0x0000;
     payload.commandId = commandId;
     payload.value = value;
