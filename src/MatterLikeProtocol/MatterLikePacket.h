@@ -16,10 +16,16 @@
 #define ATTR_ONOFF_STATE               0x0000
 
 // Electrical Measurement Attributes
-#define ATTR_EM_ACTIVE_POWER           0x0505
-#define ATTR_EM_RMS_VOLTAGE            0x0508
-#define ATTR_EM_RMS_CURRENT            0x050B
-#define ATTR_EM_POWER_FACTOR           0x050D
+#define ATTR_EM_ACTIVE_POWER            0x0505   // Active Power (W)
+#define ATTR_EM_RMS_VOLTAGE             0x0508   // RMS Voltage (V)
+#define ATTR_EM_RMS_CURRENT             0x050B   // RMS Current (mA)
+#define ATTR_EM_POWER_FACTOR            0x050D   // Power Factor (0–100)
+
+#define ATTR_EM_APPARENT_POWER          0x0510   // Apparent Power (VA)
+#define ATTR_EM_REACTIVE_POWER          0x0515   // Reactive Power (VAR)
+#define ATTR_EM_ENERGY                  0x051A   // Energy Consumed (Wh)
+#define ATTR_EM_RMS_FREQUENCY           0x051C   // Frequency (Hz)
+#define ATTR_EM_CURRENT_SUMMATION       0x0520   // Total Current Summation (mAh)
 
 struct MatterLikeHeader {
   uint32_t messageCounter;
