@@ -11,6 +11,8 @@
 #define CMD_OFF                        0x00
 #define CMD_ON                         0x01
 #define CMD_TOGGLE                     0x02
+#define CMD_READ_ATTRIBUTE             0x03
+#define CMD_REPORT_ATTRIBUTE           0x04      
 
 // OnOff Attributes (reported state read-back)
 #define ATTR_ONOFF_STATE               0x0000

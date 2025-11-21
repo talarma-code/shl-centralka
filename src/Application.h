@@ -2,6 +2,7 @@
 #include "NetworkTransport/EspNowTransport.h"
 #include "NetworkTransport/IMatterReceiver.h"
 #include "Heater/HeaterEspNow.h"
+#include "PowerMeter.h"
 
 
 class Application : public IMatterReceiver {
@@ -14,5 +15,6 @@ public:
 private:
     EspNowTransport transport;
     HeaterEspNow heaterEspNow;
+    PowerMeter powerMeter;
 
 };
