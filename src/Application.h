@@ -1,7 +1,7 @@
 #pragma once
-#include "NetworkTransport/EspNowTransport.h"
-#include "NetworkTransport/IMatterReceiver.h"
-#include "Heater/HeaterEspNow.h"
+#include "EspNowTransport.h"
+#include "IMatterReceiver.h"
+#include "HeaterEspNow.h"
 #include "PowerMeter.h"
 
 

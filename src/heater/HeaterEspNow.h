@@ -1,6 +1,6 @@
 #pragma once
 #include "HeaterAPI.h"
-#include "NetworkTransport/EspNowTransport.h"
+#include "EspNowTransport.h"
 
 class HeaterEspNow : public HeaterAPI {
 public:

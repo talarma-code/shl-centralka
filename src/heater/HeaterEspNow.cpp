@@ -1,6 +1,6 @@
 #include "HeaterEspNow.h"
 #include <Arduino.h> // dla ESP32/ESP-NOW, PWM, pinMode, digitalWrite
-#include "../MatterLikeProtocol/MatterLike.h"
+#include "MatterLike.h"
 
 
 #define HEATER_DEVICE_BASMENT 1
