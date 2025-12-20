@@ -1,0 +1,38 @@
+Jasne — poniżej rozpiska tylko tych pinów z podanych zakresów, które nie mają specjalnych ograniczeń i można je 
+bezpiecznie użyć jako TX i RX (hardware UART, pin-matrix) tak, by minimalizować ryzyko zakłóceń przy uruchamianiu itp.
+
+Bezpieczne piny (OK jako TX i RX)
+GPIO13 — OK (TX i RX)
+GPIO14 — OK (TX i RX)
+GPIO25 — OK (TX i RX)
+GPIO26 — OK (TX i RX)
+GPIO27 — OK (TX i RX)
+GPIO32 — OK (TX i RX)
+GPIO33 — OK (TX i RX)
+
+
+➡️ I2C - Tak, możesz ustawiać SDA i SCL prawie dowolnie, bo ESP32 ma pin-matrix także dla I2C.
+
+Domyślne w Arduino:
+SDA = GPIO21
+SCL = GPIO22
+
+
+
+➡️ SPI - Tutaj sytuacja trochę inna niż z UART/I2C.
+
+ESP32 ma hardware SPI z liniami szczególnie polecanymi:
+
+Linia SPI	Zalecany pin
+MOSI	GPIO23
+MISO	GPIO19
+SCK	    GPIO18
+CS	dowolny GPIO, np. 5 ✔️
+
+To jest VSPI (najczęściej używane SPI w Arduino-ESP32).
+💡 Można prze-mapować SPI na inne piny, ale:
+
+spada niezawodność przy wyższych prędkościach
+rośnie ryzyko zakłóceń
+nie wszystkie piny działają równie dobrze z sygnałem zegarowym
+Niektóre piny mają ograniczenia (np. 34–39 tylko wejścia → nie dla MOSI / SCK).
