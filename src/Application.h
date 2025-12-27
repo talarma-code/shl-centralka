@@ -10,7 +10,7 @@ public:
     Application();        // konstruktor
     void setup();         // setup Arduino
     void loop();          // loop Arduino
-    void handlePacket(const MatterLikePacket &pkt, const uint8_t *srcMac) override;
+    void handlePacket(const MatterPacketWithMac &pkt) override;
 
 private:
     EspNowTransport transport;
