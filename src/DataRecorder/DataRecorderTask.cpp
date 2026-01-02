@@ -102,11 +102,6 @@ DataRecorderTask::resetReasonToString(esp_reset_reason_t reason) const {
         case ESP_RST_DEEPSLEEP:     return "Deep Sleep Reset";
         case ESP_RST_BROWNOUT:      return "Brownout Reset";
         case ESP_RST_SDIO:          return "SDIO Reset";
-        case ESP_RST_USB:           return "USB Reset";
-        case ESP_RST_JTAG:          return "JTAG Reset";
-        case ESP_RST_EFUSE:         return "Efuse Reset";
-        case ESP_RST_PWR_GLITCH:    return "Power Glitch Reset";
-        case ESP_RST_CPU_LOCKUP:    return "CPU Lockup Reset";
         default:                    return "Invalid Reason";
     }
 }
