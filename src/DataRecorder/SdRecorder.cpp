@@ -59,6 +59,29 @@ bool SdRecorder::append(const String &data) {
     return true;
 }
 
+// Overload: append C-string directly (avoids creating Arduino String)
+bool SdRecorder::append(const char* data) {
+    if (_fileName.length() == 0) {
+        Serial.println("No file selected. Call createFile() first.");
+        return false;
+    }
+
+    File file = SD.open(_fileName.c_str(), FILE_APPEND);
+    if (!file) {
+        Serial.println("Failed to open file for append!");
+        return false;
+    }
+
+    if (!file.println(data)) {
+        Serial.println("Write failed!");
+        file.close();
+        return false;
+    }
+
+    file.close();
+    return true;
+}
+
 // -------------------- Callback version --------------------
 void SdRecorder::readFile(LineHandlerInterface &handler) {
     if (_fileName.length() == 0) {

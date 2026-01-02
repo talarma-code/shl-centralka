@@ -15,6 +15,7 @@ public:
     // -------------------- File operations --------------------
     bool createFile(const char* fileName);       // Create a file if it doesn't exist
     bool append(const String &data);             // Append data to the current file
+    bool append(const char* data);                // Append C-string data to the current file (avoids dynamic String allocation)
 
     // -------------------- File reading with callback --------------------
     void readFile(LineHandlerInterface &handler);                   // Read current file
