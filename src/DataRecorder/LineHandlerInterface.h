@@ -1,7 +1,7 @@
 #pragma once
-#include <Arduino.h>
+#include "GlobalTypes.h"
 
 class LineHandlerInterface {
 public:
-    virtual void handle(const String &line) = 0;
+    virtual void handle(const StaticString192 &line) = 0;
 };

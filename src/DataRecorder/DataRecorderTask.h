@@ -19,11 +19,7 @@ private:
 
     // File where measurements are stored (one JSON object per line)
     static constexpr const char* kMeasurementsFileName = "measurements.json";
-
-    // Serialize/deserialize measurement data to/from single-line JSON
-    // Use a fixed-capacity StaticString to avoid dynamic allocations
-    StaticString128 serializeMeasurement(const MeasurementDataPacket& m) const;
-    bool deserializeMeasurement(const StaticString128& json, MeasurementDataPacket& out) const;
-
-    const char* resetReasonToString(esp_reset_reason_t reason) const;
+        // File where events are stored (one JSON object per line)
+    static constexpr const char* kEventsFileName = "events.json";
+    static constexpr const char* kLogsFileName = "logs.json";
 };

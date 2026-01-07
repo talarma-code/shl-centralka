@@ -1,15 +1,15 @@
 #include "SdRecorder.h"
+#include "GlobalTypes.h"
 #include <SPI.h>
 #include <SD.h>
 
-#define SD_CS_PIN 5   // Default CS pin for ESP32 DevKit
-
 SdRecorder::SdRecorder() {}
 
-bool SdRecorder::setup() {
+bool SdRecorder::setup(uint8_t csPin) {
+    _csPin = csPin;
     Serial.println("Initializing SD card...");
 
-    if (!SD.begin(SD_CS_PIN)) {
+    if (!SD.begin(_csPin)) {
         Serial.println("Failed to initialize SD card!");
         return false;
     }
@@ -18,10 +18,10 @@ bool SdRecorder::setup() {
     return true;
 }
 
-bool SdRecorder::createFile(const char* fileName) {
+bool SdRecorder::createFile(FileType type, const char* fileName) {
     if (SD.exists(fileName)) {
         Serial.println("File already exists, using existing file.");
-        _fileName = String(fileName);
+        _fileNames[_idx(type)].assign(fileName);
         return true;
     }
 
@@ -32,24 +32,26 @@ bool SdRecorder::createFile(const char* fileName) {
     }
 
     file.close();
-    _fileName = String(fileName);
-    Serial.println("File created: " + _fileName);
+    _fileNames[_idx(type)].assign(fileName);
+    Serial.print("File created: ");
+    Serial.println(_fileNames[_idx(type)].c_str());
     return true;
 }
 
-bool SdRecorder::append(const String &data) {
-    if (_fileName.length() == 0) {
-        Serial.println("No file selected. Call createFile() first.");
+bool SdRecorder::append(FileType type, const StaticString192 &data) {
+    const StaticString192 &fname = _fileNames[_idx(type)];
+    if (fname.length() == 0) {
+        Serial.println("No file configured for this type. Call createFile() first.");
         return false;
     }
 
-    File file = SD.open(_fileName.c_str(), FILE_APPEND);
+    File file = SD.open(fname.c_str(), FILE_APPEND);
     if (!file) {
         Serial.println("Failed to open file for append!");
         return false;
     }
 
-    if (!file.println(data)) {
+    if (!file.println(data.c_str())) {
         Serial.println("Write failed!");
         file.close();
         return false;
@@ -59,14 +61,14 @@ bool SdRecorder::append(const String &data) {
     return true;
 }
 
-// Overload: append C-string directly (avoids creating Arduino String)
-bool SdRecorder::append(const char* data) {
-    if (_fileName.length() == 0) {
-        Serial.println("No file selected. Call createFile() first.");
+bool SdRecorder::append(FileType type, const char* data) {
+    const StaticString192 &fname = _fileNames[_idx(type)];
+    if (fname.length() == 0) {
+        Serial.println("No file configured for this type. Call createFile() first.");
         return false;
     }
 
-    File file = SD.open(_fileName.c_str(), FILE_APPEND);
+    File file = SD.open(fname.c_str(), FILE_APPEND);
     if (!file) {
         Serial.println("Failed to open file for append!");
         return false;
@@ -83,12 +85,13 @@ bool SdRecorder::append(const char* data) {
 }
 
 // -------------------- Callback version --------------------
-void SdRecorder::readFile(LineHandlerInterface &handler) {
-    if (_fileName.length() == 0) {
-        Serial.println("No file selected. Cannot read.");
+void SdRecorder::readFile(FileType type, LineHandlerInterface &handler) {
+    const StaticString192 &fname = _fileNames[_idx(type)];
+    if (fname.length() == 0) {
+        Serial.println("No file configured for this type. Cannot read.");
         return;
     }
-    readFile(_fileName.c_str(), handler);
+    readFile(fname.c_str(), handler);
 }
 
 void SdRecorder::readFile(const char* fileName, LineHandlerInterface &handler) {
@@ -98,25 +101,32 @@ void SdRecorder::readFile(const char* fileName, LineHandlerInterface &handler) {
         return;
     }
 
+    constexpr size_t kBufSize = 128 + 1; // match StaticString128 capacity
+    char buf[kBufSize];
+
     while (file.available()) {
-        String line = file.readStringUntil('\n');
-        handler.handle(line);
+        size_t n = file.readBytesUntil('\n', buf, kBufSize - 1);
+        buf[n] = '\0';
+        StaticString192 s;
+        s.assign(buf);
+        handler.handle(s);
     }
 
     file.close();
 }
 
 // -------------------- Vector version --------------------
-std::vector<String> SdRecorder::readFileToVector() {
-    if (_fileName.length() == 0) {
-        Serial.println("No file selected. Cannot read.");
+std::vector<StaticString192> SdRecorder::readFileToVector(FileType type) {
+    const StaticString192 &fname = _fileNames[_idx(type)];
+    if (fname.length() == 0) {
+        Serial.println("No file configured for this type. Cannot read.");
         return {};
     }
-    return readFileToVector(_fileName.c_str());
+    return readFileToVector(fname.c_str());
 }
 
-std::vector<String> SdRecorder::readFileToVector(const char* fileName) {
-    std::vector<String> lines;
+std::vector<StaticString192> SdRecorder::readFileToVector(const char* fileName) {
+    std::vector<StaticString192> lines;
 
     File file = SD.open(fileName);
     if (!file) {
@@ -124,8 +134,15 @@ std::vector<String> SdRecorder::readFileToVector(const char* fileName) {
         return lines;
     }
 
+    constexpr size_t kBufSize = 128 + 1; // match StaticString128 capacity
+    char buf[kBufSize];
+
     while (file.available()) {
-        lines.push_back(file.readStringUntil('\n'));
+        size_t n = file.readBytesUntil('\n', buf, kBufSize - 1);
+        buf[n] = '\0';
+        StaticString192 s;
+        s.assign(buf);
+        lines.push_back(s);
     }
 
     file.close();

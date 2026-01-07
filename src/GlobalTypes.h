@@ -1,4 +1,4 @@
 #pragma once
 #include "StaticString.h"
 
-using StaticString128 = StaticString<128>;
+using StaticString192 = StaticString<192>;
