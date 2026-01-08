@@ -5,7 +5,13 @@
 
 enum class SystemDataType : uint8_t {
     Measurements = 0,
-    Events = 1
+    Events = 1,
+    Timer = 2
+
+};
+
+struct TimerDataPacket {
+    uint32_t timerId;
 };
 
 struct SystemEventPacket { 
@@ -31,6 +37,7 @@ struct SystemMessagePacket {
     union {
         MeasurementDataPacket measurementData;
         SystemEventPacket systemEvent;
+        TimerDataPacket timerData;
     } payload;
 
 };

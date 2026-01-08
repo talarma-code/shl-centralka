@@ -6,7 +6,9 @@
 
 
 HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8192, 3, 1),
-    dataRecorderQueue(10), 
+    haQueue(10), 
+    // construct timer to send SystemMessagePacket using TimerToSystemMessage converter
+    timer(1, 1000, SystemTimerT<SystemMessagePacket, TimerToSystemMessage>::Mode::OneShot, ActiveQueueRef<SystemMessagePacket>(haQueue.nativeHandle()), TimerToSystemMessage()),
     hardwareModem (HARDWARE_MODEM_NUMBER), 
     tinyGsmModem(hardwareModem), 
     tinyGsmClient(tinyGsmModem),
@@ -20,6 +22,25 @@ void HaCommunicationTask::setup() {
 
 void HaCommunicationTask::loop()
 {
+    SystemMessagePacket msg;
+    if (haQueue.receive(msg))
+    {
+        switch (msg.type)
+        {
+        case SystemDataType::Timer:
+            // Restart the timer for another second 
+            /* code */
+            break;
+        case SystemDataType::Measurements:
+            // Handle measurement data
+            /* code */
+            break;
+        
+        default:
+            break;
+        }/* code */
+    }
+    
 }
 
 // bool HaCommunicationTask::initModem() {
