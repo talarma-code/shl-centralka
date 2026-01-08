@@ -7,7 +7,7 @@
 #include "ActiveQueue.h"
 #include "IntertaskDataModel.h"
 #include "SystemTimer.h"
-
+#include "MqttConfiguration.h"
 
 
 // Converter: convert TimerEvent -> SystemMessagePacket (ISR-safe, no allocation)
@@ -26,6 +26,20 @@ public:
     void setup() override;
     void loop() override;
 private: 
+    enum class ModemState {
+        Idle,
+        InitSerial,
+        RestartModem,
+        WaitForNetwork,
+        GprsConnect,
+        MqttConnect,
+        Running,
+        Error
+    };
+
+    void connectionManager(ModemState s);
+    // Handle timer events delivered as SystemMessagePacket (extracted from loop)
+
     ActiveQueue<SystemMessagePacket> haQueue;
     // Use templated SystemTimer to send SystemMessagePacket via converter
     SystemTimerT<SystemMessagePacket, TimerToSystemMessage> timer;
@@ -34,6 +48,10 @@ private:
     TinyGsmSim7000::GsmClientSim7000 tinyGsmClient;
     PubSubClient mqttClient;
 
-    // bool initModem();
-    // bool connectToNetwork();
+    ModemState _state = ModemState::Idle;
+    unsigned long _lastSend = 0;
+
+    // config
+    const char* _apn = "internet";
+
 };

@@ -1,4 +1,4 @@
-#pragma onece
+#pragma once
 
 const char* MQTT_HOST = "87.106.133.44";
 const int   MQTT_PORT = 1883;
