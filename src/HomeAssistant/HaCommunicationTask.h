@@ -11,7 +11,8 @@
 
 
 // Converter: convert TimerEvent -> SystemMessagePacket (ISR-safe, no allocation)
-struct TimerToSystemMessage {
+class TimerToSystemMessage {
+    public:
     SystemMessagePacket operator()(const TimerEvent& t) const noexcept {
         SystemMessagePacket m{};
         m.type = SystemDataType::Timer;
@@ -37,11 +38,7 @@ private:
         Error
     };
 
-    void connectionManager(ModemState s);
-    // Handle timer events delivered as SystemMessagePacket (extracted from loop)
-
     ActiveQueue<SystemMessagePacket> haQueue;
-    // Use templated SystemTimer to send SystemMessagePacket via converter
     SystemTimerT<SystemMessagePacket, TimerToSystemMessage> timer;
     HardwareSerial hardwareModem;
     TinyGsmSim7000 tinyGsmModem;
@@ -49,9 +46,8 @@ private:
     PubSubClient mqttClient;
 
     ModemState _state = ModemState::Idle;
-    unsigned long _lastSend = 0;
-
-    // config
     const char* _apn = "internet";
+
+     void connectionManager(ModemState s);
 
 };
