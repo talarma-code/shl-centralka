@@ -29,13 +29,15 @@ public:
 private: 
     enum class ModemState {
         Idle,
+        ModemPowerOn,
         InitSerial,
         RestartModem,
         WaitForNetwork,
         GprsConnect,
         MqttConnect,
         Running,
-        Error
+        Error,
+        ModemPowerOff
     };
 
     ActiveQueue<SystemMessagePacket> haQueue;
@@ -46,8 +48,18 @@ private:
     PubSubClient mqttClient;
 
     ModemState _state = ModemState::Idle;
+    uint8_t _waitForNetworkCounter;
+    uint8_t _gprsConnectCounter;
+    uint8_t _mqttConnectCounter;
+    uint8_t _softwareModemResetCounter;
+    uint8_t _hardwerModemReserCounter;
     const char* _apn = "internet";
 
      void connectionManager(ModemState s);
+     void modemPowerOff();
+     void modemPowerOn();
+     void clearSoftwareResetCounters();
+
+
 
 };
