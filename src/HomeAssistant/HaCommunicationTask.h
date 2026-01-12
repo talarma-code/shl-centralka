@@ -7,7 +7,7 @@
 #include "ActiveQueue.h"
 #include "IntertaskDataModel.h"
 #include "SystemTimer.h"
-#include "MqttConfiguration.h"
+
 
 
 // Converter: convert TimerEvent -> SystemMessagePacket (ISR-safe, no allocation)
@@ -31,8 +31,11 @@ private:
         Idle,
         ModemPowerOn,
         InitSerial,
-        RestartModem,
+        SoftwareRestartModem,
         WaitForNetwork,
+        // GprsStartAttach,
+        // GprsWaitAttach,
+        CheckNetwork,
         GprsConnect,
         MqttConnect,
         Running,
@@ -49,16 +52,33 @@ private:
 
     ModemState _state = ModemState::Idle;
     uint8_t _waitForNetworkCounter;
-    uint8_t _gprsConnectCounter;
+    uint8_t _checkNetworkCounter;
+
+    uint8_t _waitGprsConnectCounter;
+    uint8_t _errorGprsConnectCounter;
+
     uint8_t _mqttConnectCounter;
-    uint8_t _softwareModemResetCounter;
+    uint8_t _errorModemSoftwareResetCounter;
     uint8_t _hardwerModemReserCounter;
+
+
     const char* _apn = "internet";
 
      void connectionManager(ModemState s);
      void modemPowerOff();
      void modemPowerOn();
      void clearSoftwareResetCounters();
+
+     // --- Handlers for each ModemState ---
+     void handleModemPowerOn();
+     void handleInitSerial();
+     void handleSoftwareRestartModem();
+     void handleWaitForNetwork();
+     void handleGprsConnect();
+     void handleMqttConnect();
+     void handleRunning();
+     void handleError();
+     void handleModemPowerOff();
 
 
 
