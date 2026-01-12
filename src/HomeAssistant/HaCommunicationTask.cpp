@@ -12,7 +12,8 @@ HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8
     hardwareModem (HARDWARE_MODEM_NUMBER), 
     tinyGsmModem(hardwareModem), 
     tinyGsmClient(tinyGsmModem),
-    mqttClient(tinyGsmClient)
+    mqttClient(tinyGsmClient),
+    resetter(tinyGsmModem)
 {
     _waitForNetworkCounter = 0;
     _waitGprsConnectCounter = 0;
@@ -21,8 +22,6 @@ HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8
     _checkNetworkCounter = 0;
     _errorModemSoftwareResetCounter = 0;
     _hardwerModemReserCounter = 0;
-    _modemRestartPhase = RestartPhase::Begin;
-    _modemRestartAttempts = 0;
 }
 
 void HaCommunicationTask::setup() {
@@ -83,98 +82,23 @@ void HaCommunicationTask::handleInitSerial() {
 }
 
 void HaCommunicationTask::handleSoftwareRestartModem() {
-    switch (_modemRestartPhase) {
-        case RestartPhase::Begin: {
-            Serial.println("[Restart] Begin");
-            _modemRestartAttempts = 0;
-            _modemRestartPhase = RestartPhase::SendCfun0;
-            timer.start(100);
+    Serial.println("Restarting modem...");
+    const auto res = resetter.step();
+    switch (res.next) {
+        case ResetSim7000Modem::Next::Stay:
+            _state = ModemState::SoftwareRestartModem;
             break;
-        }
-        case RestartPhase::SendCfun0: {
-            Serial.println("[Restart] RF OFF (+CFUN=0)");
-            tinyGsmModem.sendAT("+CFUN=0");
-            _modemRestartPhase = RestartPhase::WaitCfun0;
-            timer.start(RESTART_DELAY_SEND_CFUN_MS);
+        case ResetSim7000Modem::Next::WaitForNetwork:
+            _state = ModemState::WaitForNetwork;
             break;
-        }
-        case RestartPhase::WaitCfun0: {
-            tinyGsmModem.sendAT("+CFUN?");
-            int r = tinyGsmModem.waitResponse(RESTART_DELAY_WAIT_CFUN0_MS, "+CFUN: 0");
-            if (r == 1) {
-                Serial.println("[Restart] RF is OFF");
-                _modemRestartPhase = RestartPhase::SendCfun1;
-                timer.start(200);
-            } else {
-                _modemRestartAttempts++;
-                if (_modemRestartAttempts >= MODEM_RESTART_RETRY_LIMIT) {
-                    Serial.println("[Restart] CFUN=0 failed, aborting");
-                    _errorModemSoftwareResetCounter++;
-                    _state = ModemState::Error;
-                    timer.start(200);
-                } else {
-                    timer.start(RESTART_DELAY_WAIT_CFUN0_MS);
-                }
+        case ResetSim7000Modem::Next::Error:
+            _state = ModemState::Error;
+            if (res.failed) {
+                _errorModemSoftwareResetCounter++;
             }
             break;
-        }
-        case RestartPhase::SendCfun1: {
-            Serial.println("[Restart] RF ON (+CFUN=1)");
-            tinyGsmModem.sendAT("+CFUN=1");
-            _modemRestartPhase = RestartPhase::WaitCfun1;
-            timer.start(RESTART_DELAY_SEND_CFUN_MS);
-            break;
-        }
-        case RestartPhase::WaitCfun1: {
-            tinyGsmModem.sendAT("+CFUN?");
-            int r = tinyGsmModem.waitResponse(RESTART_DELAY_WAIT_CFUN1_MS, "+CFUN: 1");
-            if (r == 1) {
-                Serial.println("[Restart] RF is ON");
-                _modemRestartPhase = RestartPhase::ProbeAT;
-                timer.start(300);
-            } else {
-                _modemRestartAttempts++;
-                if (_modemRestartAttempts >= MODEM_RESTART_RETRY_LIMIT) {
-                    Serial.println("[Restart] CFUN=1 failed, aborting");
-                    _errorModemSoftwareResetCounter++;
-                    _state = ModemState::Error;
-                    timer.start(200);
-                } else {
-                    timer.start(RESTART_DELAY_WAIT_CFUN1_MS);
-                }
-            }
-            break;
-        }
-        case RestartPhase::ProbeAT: {
-            // Check if modem responds to AT, indicating it's alive
-            tinyGsmModem.sendAT("AT");
-            int r = tinyGsmModem.waitResponse(RESTART_DELAY_PROBE_AT_MS);
-            if (r == 1) {
-                Serial.println("[Restart] Modem ready");
-                _modemRestartPhase = RestartPhase::Done;
-                // Transition to WaitForNetwork like original flow
-                _state = ModemState::WaitForNetwork;
-                timer.start(2000);
-            } else {
-                _modemRestartAttempts++;
-                if (_modemRestartAttempts >= MODEM_RESTART_RETRY_LIMIT) {
-                    Serial.println("[Restart] Modem not responding to AT");
-                    _errorModemSoftwareResetCounter++;
-                    _state = ModemState::Error;
-                    timer.start(200);
-                } else {
-                    timer.start(RESTART_DELAY_PROBE_AT_MS);
-                }
-            }
-            break;
-        }
-        case RestartPhase::Done: {
-            // Reset local phase to allow next restart cycle if needed
-            _modemRestartPhase = RestartPhase::Begin;
-            _modemRestartAttempts = 0;
-            break;
-        }
     }
+    timer.start(res.delayMs);
 }
 
 void HaCommunicationTask::handleWaitForNetwork() {

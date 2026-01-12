@@ -2,6 +2,7 @@
 // Use SIM7000 modem types explicitly (avoid depending on global macro ordering)
 #include <TinyGsmClientSIM7000.h>
 #include <PubSubClient.h>
+#include "ResetSim7000Modem.h"
 
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
@@ -49,6 +50,7 @@ private:
     TinyGsmSim7000 tinyGsmModem;
     TinyGsmSim7000::GsmClientSim7000 tinyGsmClient;
     PubSubClient mqttClient;
+    ResetSim7000Modem resetter;
 
     ModemState _state = ModemState::Idle;
     uint8_t _waitForNetworkCounter;
@@ -80,16 +82,6 @@ private:
      void handleError();
      void handleModemPowerOff();
 
-        // --- Non-blocking restart state machine ---
-        enum class RestartPhase : uint8_t { Begin, SendCfun0, WaitCfun0, SendCfun1, WaitCfun1, ProbeAT, Done };
-        RestartPhase _modemRestartPhase = RestartPhase::Begin;
-        uint8_t _modemRestartAttempts = 0;
-        // Tunable timings for non-blocking restart
-        static constexpr uint16_t RESTART_DELAY_SEND_CFUN_MS   = 500;   // wait after sending CFUN before querying
-        static constexpr uint16_t RESTART_DELAY_WAIT_CFUN0_MS  = 1000;  // wait/retry while expecting +CFUN: 0
-        static constexpr uint16_t RESTART_DELAY_WAIT_CFUN1_MS  = 1500;  // wait/retry while expecting +CFUN: 1
-        static constexpr uint16_t RESTART_DELAY_PROBE_AT_MS    = 500;   // wait/retry while probing AT
-        static constexpr uint8_t  MODEM_RESTART_RETRY_LIMIT    = 10;    // total attempts per phase
 
 
 
