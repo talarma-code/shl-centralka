@@ -10,6 +10,11 @@ enum class SystemDataType : uint8_t {
 
 };
 
+enum class MeasurementDataType : uint8_t {
+    Now = 0,
+    Historical = 1
+};
+
 struct TimerDataPacket {
     uint32_t timerId;
 };
@@ -30,6 +35,8 @@ struct MeasurementDataPacket {
     uint16_t L1Voltage_x10; 
     uint16_t L2Voltage_x10;
 
+    uint16_t HeaterEnableForSeconds;
+    MeasurementDataType measurementType;
 };
 
 struct SystemMessagePacket {

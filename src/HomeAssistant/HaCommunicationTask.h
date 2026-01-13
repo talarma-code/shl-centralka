@@ -4,6 +4,7 @@
 #include <PubSubClient.h>
 #include "ResetSim7000Modem.h"
 #include "WaitForNetworkMonitor.h"
+#include "MqttMeasurementsPublisher.h"
 
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
@@ -49,6 +50,7 @@ private:
     PubSubClient mqttClient;
     ResetSim7000Modem resetter;
     WaitForNetworkMonitor waitForNetworkMonitor;
+    MqttMeasurementsPublisher measPublisher{mqttClient, "shl/centralka"};
 
     ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter;
@@ -63,6 +65,7 @@ private:
      void modemPowerOff();
      void modemPowerOn();
      void clearSoftwareErrorCounters();
+     void findReasonAndReconnect();
 
      // --- Handlers for each ModemState ---
      void handleModemPowerOn();

@@ -27,6 +27,32 @@ void HaCommunicationTask::setup() {
     connectionManager(ModemState::ModemPowerOn);
 }
 
+void HaCommunicationTask::loop()
+{
+    SystemMessagePacket msg;
+    if (haQueue.receive(msg)) {
+        if (msg.type == SystemDataType::Timer) {
+            connectionManager(_state);
+        }
+       if (msg.type == SystemDataType::Measurements) {
+            if (_state == ModemState::Running) {
+                if (mqttClient.connected()) {
+                    if (!measPublisher.publishPacket(msg.payload.measurementData)) {
+                        Serial.println("Publish measurement packet failed - reconnecting...");
+                        findReasonAndReconnect();
+                    }
+                }
+                else {
+                    findReasonAndReconnect();
+                }
+            } else {
+                Serial.println("Cannot publish, modem not running yeat");
+            }
+        }
+    }
+}
+
+
 void HaCommunicationTask::connectionManager(ModemState s) {
     switch (s) {
         case ModemState::ModemPowerOn:
@@ -138,7 +164,6 @@ void HaCommunicationTask::handleMqttConnect() {
     //todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
     if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS)) {
         Serial.println("MQTT connected");
-        //mqttClient.subscribe("test/#");
         _state = ModemState::Running;
         clearSoftwareErrorCounters();
         timer.start(100);
@@ -154,25 +179,28 @@ void HaCommunicationTask::handleMqttConnect() {
 }
 
 void HaCommunicationTask::handleRunning() {
-    // In Running state: process MQTT internals and attempt reconnect if needed.
     if (mqttClient.connected()) {
         _hardwerModemReserCounter = 0;
         mqttClient.loop();
         timer.start(1000);           // schedule next MQTT refresh
     } else {
         Serial.println("MQTT disconnected, reconnecting...");
-        if (!tinyGsmModem.isNetworkConnected()) {
-            _state = ModemState::WaitForNetwork;
-            timer.start(200);
-        }
-        else if (!tinyGsmModem.isGprsConnected()) {
-            _state = ModemState::GprsConnect;
-            timer.start(200);
-        }
-        else {
-            _state = ModemState::MqttConnect;
-            timer.start(200);
-        }
+        findReasonAndReconnect();
+    }
+}
+
+void HaCommunicationTask::findReasonAndReconnect() {
+    if (!tinyGsmModem.isNetworkConnected()) {
+        _state = ModemState::WaitForNetwork;
+        timer.start(200);
+    }
+    else if (!tinyGsmModem.isGprsConnected()) {
+        _state = ModemState::GprsConnect;
+        timer.start(200);
+    }
+    else {
+        _state = ModemState::MqttConnect;
+        timer.start(200);
     }
 }
 
@@ -207,35 +235,6 @@ void HaCommunicationTask::handleModemPowerOff() {
     modemPowerOff();
     _state = ModemState::ModemPowerOn;
     timer.start(3000);
-}
-
-void HaCommunicationTask::loop()
-{
-    SystemMessagePacket msg;
-    if (haQueue.receive(msg)) {
-        if (msg.type == SystemDataType::Timer) {
-            connectionManager(_state);
-        }
-        else if (msg.type == SystemDataType::Measurements) {
-            if (_state == ModemState::Running) {
-                if (mqttClient.connected()) {
-                    float temp = 23.5;
-                    char payload[16];
-                    dtostrf(temp, 4, 2, payload);
-                    if (!mqttClient.publish("test/sim7000/temperatura", payload)) {
-                        Serial.println("Publish failed");
-                    } else {
-                        Serial.print("Sending MQTT: ");
-                        Serial.println(payload);
-                    }
-                }   
-            }
-            else {
-                Serial.println("Cannot publish, modem not running, state:");
-                Serial.println((int)_state);
-            }
-        }
-    }
 }
 
 void HaCommunicationTask::modemPowerOff() {
