@@ -3,6 +3,7 @@
 #include <TinyGsmClientSIM7000.h>
 #include <PubSubClient.h>
 #include "ResetSim7000Modem.h"
+#include "WaitForNetworkMonitor.h"
 
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
@@ -29,14 +30,10 @@ public:
     void loop() override;
 private: 
     enum class ModemState {
-        Idle,
         ModemPowerOn,
         InitSerial,
         SoftwareRestartModem,
         WaitForNetwork,
-        // GprsStartAttach,
-        // GprsWaitAttach,
-        CheckNetwork,
         GprsConnect,
         MqttConnect,
         Running,
@@ -51,15 +48,11 @@ private:
     TinyGsmSim7000::GsmClientSim7000 tinyGsmClient;
     PubSubClient mqttClient;
     ResetSim7000Modem resetter;
+    WaitForNetworkMonitor waitForNetworkMonitor;
 
-    ModemState _state = ModemState::Idle;
-    uint8_t _waitForNetworkCounter;
-    uint8_t _checkNetworkCounter;
-
-    uint8_t _waitGprsConnectCounter;
+    ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter;
-
-    uint8_t _mqttConnectCounter;
+    uint8_t _errorMqttConnectCounter;
     uint8_t _errorModemSoftwareResetCounter;
     uint8_t _hardwerModemReserCounter;
 
@@ -69,12 +62,12 @@ private:
      void connectionManager(ModemState s);
      void modemPowerOff();
      void modemPowerOn();
-     void clearSoftwareResetCounters();
+     void clearSoftwareErrorCounters();
 
      // --- Handlers for each ModemState ---
      void handleModemPowerOn();
      void handleInitSerial();
-        void handleSoftwareRestartModem();
+     void handleSoftwareRestartModem();
      void handleWaitForNetwork();
      void handleGprsConnect();
      void handleMqttConnect();

@@ -13,13 +13,11 @@ HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8
     tinyGsmModem(hardwareModem), 
     tinyGsmClient(tinyGsmModem),
     mqttClient(tinyGsmClient),
-    resetter(tinyGsmModem)
+    resetter(tinyGsmModem),
+    waitForNetworkMonitor(tinyGsmModem)
 {
-    _waitForNetworkCounter = 0;
-    _waitGprsConnectCounter = 0;
     _errorGprsConnectCounter = 0;
-    _mqttConnectCounter = 0;
-    _checkNetworkCounter = 0;
+    _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
     _hardwerModemReserCounter = 0;
 }
@@ -43,8 +41,6 @@ void HaCommunicationTask::connectionManager(ModemState s) {
         case ModemState::WaitForNetwork:
             handleWaitForNetwork();
             break;
-        // case ModemState::GprsStartAttach:
-        // case ModemState::GprsWaitAttach:
         case ModemState::GprsConnect:
             handleGprsConnect();
             break;
@@ -69,7 +65,7 @@ void HaCommunicationTask::connectionManager(ModemState s) {
 void HaCommunicationTask::handleModemPowerOn() {
     Serial.println("Powering on modem...");
     modemPowerOn();
-    clearSoftwareResetCounters();
+    clearSoftwareErrorCounters();
     _state = ModemState::InitSerial;
     timer.start(1500);
 }
@@ -103,18 +99,20 @@ void HaCommunicationTask::handleSoftwareRestartModem() {
 
 void HaCommunicationTask::handleWaitForNetwork() {
     Serial.println("Waiting for network (poll)...");
-    if (tinyGsmModem.isNetworkConnected()) {
-        Serial.println("Network OK");
-        _state = ModemState::GprsConnect;
-        timer.start(100);
-    } else {
-        if (_waitForNetworkCounter >= MAX_WAIT_FOR_NETWORK_ATTEMPTS) {
-            _waitForNetworkCounter = 0;
+    const auto res = waitForNetworkMonitor.step();
+    switch (res.next) {
+        case WaitForNetworkMonitor::Next::Stay:
+            _state = ModemState::WaitForNetwork;
+            break;
+        case WaitForNetworkMonitor::Next::GprsConnect:
+            Serial.println("Network OK");
+            _state = ModemState::GprsConnect;
+            break;
+        case WaitForNetworkMonitor::Next::SoftwareRestartModem:
             _state = ModemState::SoftwareRestartModem;
-        }
-        _waitForNetworkCounter++;
-        timer.start(500);
+            break;
     }
+    timer.start(res.delayMs);
 }
 
 void HaCommunicationTask::handleGprsConnect() {
@@ -142,13 +140,13 @@ void HaCommunicationTask::handleMqttConnect() {
         Serial.println("MQTT connected");
         //mqttClient.subscribe("test/#");
         _state = ModemState::Running;
-        clearSoftwareResetCounters();
+        clearSoftwareErrorCounters();
         timer.start(100);
     } else {
         Serial.print("MQTT connect failed, rc=");
         Serial.println(mqttClient.state());
-        _mqttConnectCounter++;
-        if (_mqttConnectCounter >= MAX_MQTT_CONNECT_ATTEMPTS) {
+        _errorMqttConnectCounter++;
+        if (_errorMqttConnectCounter >= MAX_MQTT_CONNECT_ATTEMPTS) {
             _state = ModemState::GprsConnect;
         }
         timer.start(500);
@@ -201,7 +199,7 @@ void HaCommunicationTask::handleError() {
     }
     Serial.println("Modem state ERROR: hardware reset: ");
     Serial.println(_hardwerModemReserCounter);
-    clearSoftwareResetCounters();
+    clearSoftwareErrorCounters();
 }
 
 void HaCommunicationTask::handleModemPowerOff() {
@@ -248,12 +246,9 @@ void HaCommunicationTask::modemPowerOn() {
     //TODO: when hardware ready - disable modem
 }
 
-void HaCommunicationTask::clearSoftwareResetCounters() {
-    _waitForNetworkCounter = 0;
-    _waitGprsConnectCounter = 0;
-     _errorGprsConnectCounter = 0;
-    _mqttConnectCounter = 0;
-    _checkNetworkCounter = 0;
+void HaCommunicationTask::clearSoftwareErrorCounters() {
+    _errorGprsConnectCounter = 0;
+    _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
 }
 
