@@ -29,6 +29,9 @@ public:
     HaCommunicationTask();
     void setup() override;
     void loop() override;
+    QueueHandle_t getQueueHandle() const {
+        return haQueue.nativeHandle();
+    }
 private: 
     enum class ModemState {
         ModemPowerOn,
@@ -50,7 +53,8 @@ private:
     PubSubClient mqttClient;
     ResetSim7000Modem resetter;
     WaitForNetworkMonitor waitForNetworkMonitor;
-    MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1"};
+    MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1/telemetry"};
+    MqttMeasurementsPublisher historyPublisher{mqttClient, "lacko/shl_c1/history"};
 
     ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter;

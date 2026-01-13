@@ -2,9 +2,9 @@
 #include "Application.h"
 #include "HaCommunicationTask.h"
 
-Application application;
-HaCommunicationTask haCommunicationTask;
 
+HaCommunicationTask haCommunicationTask;
+Application application(haCommunicationTask.getQueueHandle());
 
 void setup() {
   application.setup();
