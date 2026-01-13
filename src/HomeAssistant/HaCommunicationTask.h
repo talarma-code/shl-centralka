@@ -50,7 +50,7 @@ private:
     PubSubClient mqttClient;
     ResetSim7000Modem resetter;
     WaitForNetworkMonitor waitForNetworkMonitor;
-    MqttMeasurementsPublisher measPublisher{mqttClient, "shl/centralka"};
+    MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1"};
 
     ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter;

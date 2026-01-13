@@ -34,24 +34,18 @@ void HaCommunicationTask::loop()
         if (msg.type == SystemDataType::Timer) {
             connectionManager(_state);
         }
-       if (msg.type == SystemDataType::Measurements) {
-            if (_state == ModemState::Running) {
-                if (mqttClient.connected()) {
-                    if (!measPublisher.publishPacket(msg.payload.measurementData)) {
-                        Serial.println("Publish measurement packet failed - reconnecting...");
-                        findReasonAndReconnect();
-                    }
-                }
-                else {
-                    findReasonAndReconnect();
-                }
-            } else {
+        else if (msg.type == SystemDataType::Measurements) {
+            if (_state != ModemState::Running) {
                 Serial.println("Cannot publish, modem not running yeat");
+            } else if (!mqttClient.connected()) {
+                findReasonAndReconnect();
+            } else if (!measPublisher.publishPacket(msg.payload.measurementData)) {
+                Serial.println("Publish measurement packet failed - reconnecting...");
+                findReasonAndReconnect();
             }
         }
     }
 }
-
 
 void HaCommunicationTask::connectionManager(ModemState s) {
     switch (s) {
@@ -220,11 +214,17 @@ void HaCommunicationTask::handleError() {
         _state = ModemState::ModemPowerOff;
         timer.start(TIME_15_MINUTEs);
     }
-    if (_hardwerModemReserCounter >= 3)
+    if (_hardwerModemReserCounter >= 3 && _hardwerModemReserCounter < 8)
     {
         _state = ModemState::ModemPowerOff;
         timer.start(TIME_30_MINUTEs);
     }
+    if (_hardwerModemReserCounter >= 8)
+    {
+        _state = ModemState::ModemPowerOff;
+        timer.start(TIME_1_HOUR);
+    }
+
     Serial.println("Modem state ERROR: hardware reset: ");
     Serial.println(_hardwerModemReserCounter);
     clearSoftwareErrorCounters();
@@ -232,6 +232,7 @@ void HaCommunicationTask::handleError() {
 
 void HaCommunicationTask::handleModemPowerOff() {
     Serial.println("Powering off modem...");
+    _hardwerModemReserCounter++;
     modemPowerOff();
     _state = ModemState::ModemPowerOn;
     timer.start(3000);

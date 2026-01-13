@@ -8,10 +8,8 @@
 // Uses ISO 8601 timestamp format: "YYYY-MM-DDTHH:MM:SS" for timestamps.
 class SimpleJsonParser {
 public:
-    // Format epoch seconds into ISO string (StaticString128)
-    static StaticString192 formatIsoTimestamp(uint32_t epoch);
-
-    // Parse ISO string YYYY-MM-DDTHH:MM[:SS] into epoch seconds
+    // ISO timestamp helpers are implemented in Utils/TimeUtils and wrapped here
+    static StaticString32 formatIsoTimestamp(uint32_t epoch);
     static bool parseIsoTimestamp(const char* str, uint32_t &outEpoch);
 
     // Measurement serialization/deserialization

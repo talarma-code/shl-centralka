@@ -1,54 +1,14 @@
 #include "SimpleJsonParser.h"
-#include <time.h>
-#include <stdio.h>
+#include "Utils/TimeUtils.h"
 #include <string.h>
 
-// Helper: format epoch -> ISO timestamp
-StaticString192 SimpleJsonParser::formatIsoTimestamp(uint32_t epoch) {
-    time_t t = (time_t)epoch;
-    struct tm tm_val;
-#if defined(__GNUC__)
-    gmtime_r(&t, &tm_val);
-#else
-    struct tm *tmp = gmtime(&t);
-    if (tmp) tm_val = *tmp; else memset(&tm_val, 0, sizeof(tm_val));
-#endif
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
-        tm_val.tm_year + 1900, tm_val.tm_mon + 1, tm_val.tm_mday,
-        tm_val.tm_hour, tm_val.tm_min, tm_val.tm_sec);
+StaticString32 SimpleJsonParser::formatIsoTimestamp(uint32_t epoch) { return ::formatIsoTimestamp(epoch); }
 
-    StaticString192 s;
-    s.assign(buf);
-    return s;
-}
-
-// Helper: parse ISO timestamp (supports YYYY-MM-DDTHH:MM and optional :SS)
-bool SimpleJsonParser::parseIsoTimestamp(const char* str, uint32_t &outEpoch) {
-    if (!str) return false;
-    int year=0, mon=0, day=0, hour=0, min=0, sec=0;
-    // Try with seconds
-    int matched = sscanf(str, "%4d-%2d-%2dT%2d:%2d:%2d", &year, &mon, &day, &hour, &min, &sec);
-    if (matched < 5) return false;
-
-    struct tm tm_val;
-    memset(&tm_val, 0, sizeof(tm_val));
-    tm_val.tm_year = year - 1900;
-    tm_val.tm_mon = mon - 1;
-    tm_val.tm_mday = day;
-    tm_val.tm_hour = hour;
-    tm_val.tm_min = min;
-    tm_val.tm_sec = sec;
-
-    time_t tt = mktime(&tm_val); // local time -> epoch
-    if (tt < 0) return false;
-    outEpoch = (uint32_t)tt;
-    return true;
-}
+bool SimpleJsonParser::parseIsoTimestamp(const char* str, uint32_t &outEpoch) { return ::parseIsoTimestamp(str, outEpoch); }
 
 // -------------------- Measurement --------------------
 StaticString192 SimpleJsonParser::serializeMeasurement(const MeasurementDataPacket& m) {
-    StaticString192 ts = formatIsoTimestamp(m.timestamp);
+    StaticString32 ts = formatIsoTimestamp(m.timestamp);
     char buf[128];
     int n = snprintf(buf, sizeof(buf), "{\"timestamp\":\"%s\",\"L1Power\":%u,\"L2Power\":%u,\"HeaterPower\":%u,\"HomeTotalPower\":%u,\"L1Voltage_x10\":%u,\"L2Voltage_x10\":%u}",
         ts.c_str(), (unsigned)m.L1Power, (unsigned)m.L2Power, (unsigned)m.HeaterPower, (unsigned)m.HomeTotalPower,
@@ -130,7 +90,7 @@ static esp_reset_reason_t stringToReason(const char* s) {
 }
 
 StaticString192 SimpleJsonParser::serializeEvent(const SystemEventPacket& e) {
-    StaticString192 ts = formatIsoTimestamp(e.timestamp);
+    StaticString32 ts = formatIsoTimestamp(e.timestamp);
     const char* r = reasonToString(e.reason);
     char buf[128];
     int n = snprintf(buf, sizeof(buf), "{\"timestamp\":\"%s\",\"reason\":\"%s\"}", ts.c_str(), r);

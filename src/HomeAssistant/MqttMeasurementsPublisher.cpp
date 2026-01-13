@@ -1,22 +1,30 @@
 #include "MqttMeasurementsPublisher.h"
+#include "Utils/TimeUtils.h"
 
 bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     bool ok = true;
 
-    ok &= publishUint("timestamp", m.timestamp);
+    // Publish timestamp in ISO 8601 format
+    ok &= publishTopicPayload("timestamp", formatIsoTimestamp(m.timestamp).c_str());
 
     ok &= publishUint("power/l1", m.L1Power);
     ok &= publishUint("power/l2", m.L2Power);
     ok &= publishUint("power/heater", m.HeaterPower);
     ok &= publishUint("power/home_total", m.HomeTotalPower);
 
-    ok &= publishUint("voltage/l1_x10", m.L1Voltage_x10);
-    ok &= publishUint("voltage/l2_x10", m.L2Voltage_x10);
+    ok &= publishTopicPayload("voltage/l1", formatVoltageString(m.L1Voltage_x10).c_str());
+    ok &= publishTopicPayload("voltage/l2", formatVoltageString(m.L2Voltage_x10).c_str());
 
     ok &= publishUint("heater/enable_seconds", m.HeaterEnableForSeconds);
-    ok &= publishUint("measurement/type", static_cast<uint32_t>(m.measurementType));
-
     return ok;
+}
+
+StaticString32 MqttMeasurementsPublisher::formatVoltageString(uint16_t value_x10) const {
+    char payload[16];
+    unsigned long whole = value_x10 / 10UL;
+    unsigned long frac = value_x10 % 10UL;
+    snprintf(payload, sizeof(payload), "%lu.%lu", whole, frac);
+    return StaticString32(payload);
 }
 
 bool MqttMeasurementsPublisher::publishInt(const char* name, int32_t value) {
@@ -29,6 +37,10 @@ bool MqttMeasurementsPublisher::publishUint(const char* name, uint32_t value) {
     char payload[24];
     snprintf(payload, sizeof(payload), "%lu", (unsigned long)value);
     return publishTopicPayload(name, payload);
+}
+
+bool MqttMeasurementsPublisher::publishUint(const char* name, const char* value) {
+    return publishTopicPayload(name, value);
 }
 
 bool MqttMeasurementsPublisher::publishTopicPayload(const char* fieldName, const char* payload) {
