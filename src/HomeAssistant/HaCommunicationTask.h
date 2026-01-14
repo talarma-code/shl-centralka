@@ -61,6 +61,7 @@ private:
     uint8_t _errorMqttConnectCounter;
     uint8_t _errorModemSoftwareResetCounter;
     uint8_t _hardwerModemReserCounter;
+    uint32_t _mqttTick = 0;
 
 
     const char* _apn = "internet";

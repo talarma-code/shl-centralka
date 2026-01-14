@@ -22,4 +22,6 @@ private:
 
     PubSubClient& _client;
     const char* _baseTopic;
+    uint32_t _punlishFailureCount = 0;
+    uint32_t _publishSuccessCount = 0;
 };

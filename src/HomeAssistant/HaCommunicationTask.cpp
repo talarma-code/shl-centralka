@@ -6,7 +6,7 @@
 #define MODEM_TX 14  // ESP32 TX -> RX modemu
 #define HARDWARE_MODEM_NUMBER 2  
 
-HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8192, 3, 1),
+HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 10240, 3, 1),
     haQueue(10), 
     timer(1, 1000, SystemTimerT<SystemMessagePacket, TimerToSystemMessage>::Mode::OneShot, ActiveQueueRef<SystemMessagePacket>(haQueue.nativeHandle()), TimerToSystemMessage()),
     hardwareModem (HARDWARE_MODEM_NUMBER), 
@@ -20,6 +20,10 @@ HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 8
     _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
     _hardwerModemReserCounter = 0;
+
+    mqttClient.setKeepAlive(60);        // seconds
+    mqttClient.setSocketTimeout(30);    // seconds
+    mqttClient.setBufferSize(2048);     // większy bufor na ramki MQTT (temat + payload)
 }
 
 void HaCommunicationTask::setup() {
@@ -38,9 +42,11 @@ void HaCommunicationTask::loop()
             if (_state != ModemState::Running) {
                 Serial.println("Cannot publish, modem not running yeat");
             } else if (!mqttClient.connected()) {
+                Serial.println("MQTT disconnected, Measurements");
                 findReasonAndReconnect();
             } else if (!measPublisher.publishPacket(msg.payload.measurementData)) {
                 Serial.println("Publish measurement packet failed - reconnecting...");
+                Serial.println("MQTT publishPacket, failed");
                 findReasonAndReconnect();
             }
         }
@@ -155,6 +161,7 @@ void HaCommunicationTask::handleGprsConnect() {
 void HaCommunicationTask::handleMqttConnect() {
     Serial.println("Attempting MQTT connect...");
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+    // Tune MQTT session for cellular link stability
     //todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
     if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS)) {
         Serial.println("MQTT connected");
@@ -173,13 +180,20 @@ void HaCommunicationTask::handleMqttConnect() {
 }
 
 void HaCommunicationTask::handleRunning() {
-    if (mqttClient.connected()) {
-        _hardwerModemReserCounter = 0;
+    _hardwerModemReserCounter = 0;
+    _mqttTick++;
+    
+    if (_mqttTick < 3) {
         mqttClient.loop();
-        timer.start(1000);           // schedule next MQTT refresh
-    } else {
-        Serial.println("MQTT disconnected, reconnecting...");
-        findReasonAndReconnect();
+        timer.start(500);
+    }
+    if (_mqttTick == 3) {
+        _mqttTick = 0;
+        if (!mqttClient.connected()) {
+            Serial.print("MQTT disconnected, state:running-timer, rc=");
+            Serial.println(mqttClient.state()); // pokaż kod rozłączenia klienta
+            findReasonAndReconnect();
+        }
     }
 }
 

@@ -5,17 +5,31 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     bool ok = true;
 
     // Publish timestamp in ISO 8601 format
-    ok &= publishTopicPayload("timestamp", formatIsoTimestamp(m.timestamp).c_str());
+    _client.loop();
+    delay(60);
+    //ok &= publishTopicPayload("timestamp", formatIsoTimestamp(m.timestamp).c_str());
+    //_client.loop();
 
     ok &= publishUint("power/l1", m.L1Power);
     ok &= publishUint("power/l2", m.L2Power);
+    //_client.loop();
+
     ok &= publishUint("power/heater", m.HeaterPower);
     ok &= publishUint("power/home_total", m.HomeTotalPower);
+    //_client.loop();
 
     ok &= publishTopicPayload("voltage/l1", formatVoltageString(m.L1Voltage_x10).c_str());
     ok &= publishTopicPayload("voltage/l2", formatVoltageString(m.L2Voltage_x10).c_str());
-
+    //_client.loop();
     ok &= publishUint("heater/enable_seconds", m.HeaterEnableForSeconds);
+    _client.loop();
+
+    Serial.print("MQTT publish: success=");
+    Serial.print(_publishSuccessCount);
+    Serial.print(", fail=");    
+    Serial.println(_punlishFailureCount);
+    _publishSuccessCount = 0;
+    _punlishFailureCount = 0;
     return ok;
 }
 
@@ -48,8 +62,32 @@ bool MqttMeasurementsPublisher::publishTopicPayload(const char* fieldName, const
         topic.append(_baseTopic);
         topic.append("/");
         topic.append(fieldName);
-        if (_client.publish(topic.c_str(), payload)) {
-        return true;
-    }
-    return _client.publish(topic.c_str(), payload);
+
+        _client.loop();
+        const char* t = topic.c_str();
+        const size_t tlen = strlen(t);
+        const size_t plen = strlen(payload);
+
+        bool ok = false;
+        for (uint8_t attempt = 0; attempt < 2; ++attempt) { // 1 szybka ponowna próba
+            _client.loop();
+            ok = _client.publish(t, payload);
+            if (ok) break;
+            delay(60);               // krótki backoff żeby opróżnić bufor TCP
+        
+            _client.loop();
+        }
+
+        // utrzymaj sesję i daj czas na wysyłkę kolejki
+        _client.loop();
+        delay(40);
+
+        if (ok) {
+            _publishSuccessCount++;
+        } else {
+            _punlishFailureCount++;
+            Serial.printf("MQTT publish FAILED: topic='%s' topic_len=%u payload_len=%u connected=%d state=%d\n",
+                          t, (unsigned)tlen, (unsigned)plen, _client.connected(), _client.state());
+        }
+        return ok;
 }
