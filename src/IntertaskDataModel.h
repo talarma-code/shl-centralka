@@ -2,12 +2,12 @@
 #include <Arduino.h>
 #include "esp_system.h"
 #include "StaticString.h"
+#include "GlobalTypes.h"
 
 enum class SystemDataType : uint8_t {
     Measurements = 0,
     Events = 1,
     Timer = 2
-
 };
 
 enum class MeasurementDataType : uint8_t {
@@ -49,7 +49,18 @@ struct SystemMessagePacket {
 
 };
 
-struct SystemLogPacket  {
-    uint32_t timestamp;
-    StaticString<50> logMessage;
+enum class LogLevel : uint8_t {
+    detailDebug = 0,
+    debug = 1,
+    info = 2,
+    error = 3,
+    critical = 4
 };
+
+struct SystemLogPacket  {
+    LogLevel level;
+    uint32_t timestamp;
+    StaticString96 logMessage;
+};
+
+

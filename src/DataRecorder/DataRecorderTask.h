@@ -12,14 +12,16 @@ public:
     DataRecorderTask(); 
     void setup() override;
     void loop() override;
+    QueueHandle_t logsQueue();
 
 private:
     ActiveQueue<SystemMessagePacket> dataRecorderQueue;
+    ActiveQueue<SystemLogPacket> logRecorderQueue;
     SdRecorder sdRecorder;
 
     // File where measurements are stored (one JSON object per line)
     static constexpr const char* kMeasurementsFileName = "measurements.json";
         // File where events are stored (one JSON object per line)
     static constexpr const char* kEventsFileName = "events.json";
-    static constexpr const char* kLogsFileName = "logs.json";
+    static constexpr const char* kLogsFileName = "logs.txt";
 };
