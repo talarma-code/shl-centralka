@@ -4,6 +4,7 @@
 #include "SystemDebuger.h"
 #include "ActiveQueueRef.h"
 #include <esp_system.h>
+#include <sys/time.h>
 
 #define LED_PIN 2  // wbudowana dioda LED
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
@@ -27,7 +28,23 @@ void Application::setup() {
     powerMeter.registerTransport(&transport);
 
     powerMeasurementTimer.start(25000);
+    rtc.setup();
+    setupSystemTime();
 
+}
+
+void Application::setupSystemTime() {
+    DateTime now = rtc.now();
+
+    // Ustaw systemowy czas (time(nullptr)) na podstawie RTC
+    time_t epoch = (time_t)now.unixtime();
+    struct timeval tv;
+    tv.tv_sec = epoch;
+    tv.tv_usec = 0;
+    settimeofday(&tv, nullptr);
+
+    Serial.print("System time set from RTC: ");
+    rtc.print(now);
 }
 
 void Application::loop() {

@@ -1,7 +1,7 @@
 #include "RtcDs3231.h"
 
-#define I2C_LINE_SDA 21
-#define I2C_LINE_SCL 22
+#define I2C_LINE_SDA 16
+#define I2C_LINE_SCL 17
 
 bool RtcDs3231::setup()
 {

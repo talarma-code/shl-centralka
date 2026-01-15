@@ -35,12 +35,17 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
 
 bool MqttMeasurementsPublisher::publishOnlineHeartbeat(uint32_t epoch) {
     // Build payload: "online <ISO8601>"
+    _client.loop();
+    delay(60);
     StaticString32 ts = formatIsoTimestamp(epoch);
-    char payload[80];
-    snprintf(payload, sizeof(payload), "online %s", ts.c_str());
+
+    Serial.print("Publishing online heartbeat with timestamp: ");
+    Serial.println(ts.c_str()); 
+    Serial.print("_baseTopic: ");
+    Serial.println(_baseTopic);
 
     // Topic: <baseTopic>/online (baseTopic provided in ctor, e.g. lacko/shl_c1/status)
-    return publishTopicPayload("online", payload);
+    return publishTopicPayload("online", ts.c_str());
 }
 
 StaticString32 MqttMeasurementsPublisher::formatVoltageString(uint16_t value_x10) const {
