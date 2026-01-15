@@ -24,6 +24,9 @@ HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 1
     mqttClient.setKeepAlive(60);        // seconds
     mqttClient.setSocketTimeout(30);    // seconds
     mqttClient.setBufferSize(2048);     // większy bufor na ramki MQTT (temat + payload)
+
+    // Configure running monitor: 500 ms loop, check connection every 3 loops, heartbeat every 60 s
+    runningMonitor.configure(500, 3, 60);
 }
 
 void HaCommunicationTask::setup() {
@@ -181,20 +184,18 @@ void HaCommunicationTask::handleMqttConnect() {
 
 void HaCommunicationTask::handleRunning() {
     _hardwerModemReserCounter = 0;
-    _mqttTick++;
-    
-    if (_mqttTick < 3) {
-        mqttClient.loop();
-        timer.start(500);
+
+    const auto res = runningMonitor.step();
+    if (res.next == HaRunningMonitor::Next::ReconnectNeeded) {
+        Serial.print("MQTT disconnected, state:running-timer, rc=");
+        Serial.println(mqttClient.state());
+        findReasonAndReconnect();
+        return; // timer is started inside findReasonAndReconnect()
     }
-    if (_mqttTick == 3) {
-        _mqttTick = 0;
-        if (!mqttClient.connected()) {
-            Serial.print("MQTT disconnected, state:running-timer, rc=");
-            Serial.println(mqttClient.state()); // pokaż kod rozłączenia klienta
-            findReasonAndReconnect();
-        }
-    }
+
+    // Stay in Running state and re-arm timer according to monitor suggestion
+    _state = ModemState::Running;
+    timer.start(res.delayMs);
 }
 
 void HaCommunicationTask::findReasonAndReconnect() {

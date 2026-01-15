@@ -33,6 +33,16 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     return ok;
 }
 
+bool MqttMeasurementsPublisher::publishOnlineHeartbeat(uint32_t epoch) {
+    // Build payload: "online <ISO8601>"
+    StaticString32 ts = formatIsoTimestamp(epoch);
+    char payload[80];
+    snprintf(payload, sizeof(payload), "online %s", ts.c_str());
+
+    // Topic: <baseTopic>/online (baseTopic provided in ctor, e.g. lacko/shl_c1/status)
+    return publishTopicPayload("online", payload);
+}
+
 StaticString32 MqttMeasurementsPublisher::formatVoltageString(uint16_t value_x10) const {
     char payload[16];
     unsigned long whole = value_x10 / 10UL;
@@ -74,7 +84,7 @@ bool MqttMeasurementsPublisher::publishTopicPayload(const char* fieldName, const
             ok = _client.publish(t, payload);
             if (ok) break;
             delay(60);               // krótki backoff żeby opróżnić bufor TCP
-        
+            Serial.println("retry...");
             _client.loop();
         }
 

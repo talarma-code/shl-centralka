@@ -11,6 +11,9 @@ public:
 
     bool publishPacket(const MeasurementDataPacket& m);
 
+    // Publish device online heartbeat with local timestamp
+    bool publishOnlineHeartbeat(uint32_t epoch);
+
     StaticString32 formatVoltageString(uint16_t value_x10) const;
 
 private:

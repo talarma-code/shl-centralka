@@ -5,6 +5,7 @@
 #include "ResetSim7000Modem.h"
 #include "WaitForNetworkMonitor.h"
 #include "MqttMeasurementsPublisher.h"
+#include "HaRunningMonitor.h"
 
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
@@ -55,13 +56,14 @@ private:
     WaitForNetworkMonitor waitForNetworkMonitor;
     MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1/telemetry"};
     MqttMeasurementsPublisher historyPublisher{mqttClient, "lacko/shl_c1/history"};
+    MqttMeasurementsPublisher statusPublisher{mqttClient, "lacko/shl_c1/status"};
+    HaRunningMonitor runningMonitor{mqttClient, statusPublisher};
 
     ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter;
     uint8_t _errorMqttConnectCounter;
     uint8_t _errorModemSoftwareResetCounter;
     uint8_t _hardwerModemReserCounter;
-    uint32_t _mqttTick = 0;
 
 
     const char* _apn = "internet";
