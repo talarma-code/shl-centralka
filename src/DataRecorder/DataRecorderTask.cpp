@@ -70,3 +70,7 @@ QueueHandle_t DataRecorderTask::logsQueue() {
     return logRecorderQueue.nativeHandle();
 }
 
+QueueHandle_t DataRecorderTask::recordQueue() {
+    return dataRecorderQueue.nativeHandle();
+}
+

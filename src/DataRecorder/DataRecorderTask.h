@@ -13,6 +13,7 @@ public:
     void setup() override;
     void loop() override;
     QueueHandle_t logsQueue();
+    QueueHandle_t recordQueue();
 
 private:
     ActiveQueue<SystemMessagePacket> dataRecorderQueue;

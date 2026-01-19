@@ -45,7 +45,7 @@ private:
     void dispatch(const SystemLogPacket& pkt);
 
     ActiveQueueRef<SystemLogPacket> logQueueRef{};
-    volatile LogLevel logLevel = LogLevel::detailDebug; // domyslnie logujemy wszystko
-    volatile Output output = Output::SdOnly;             // domyslnie tylko SD
+    volatile LogLevel logLevel = LogLevel::detailDebug; 
+    volatile Output output = Output::SdAndUart;             
     bool initialized = false;
 };

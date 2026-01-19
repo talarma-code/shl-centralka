@@ -1,15 +1,19 @@
 #include <Arduino.h>
 #include "Application.h"
 #include "HaCommunicationTask.h"
+#include "DataRecorderTask.h"
 
 
 HaCommunicationTask haCommunicationTask;
-Application application(haCommunicationTask.getQueueHandle());
+DataRecorderTask dataRecorderTask;
+Application application(haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
 
 void setup() {
   application.setup();
-  delay(1000); // Give some time for setup
+  delay(500); // Give some time for setup
   haCommunicationTask.start();
+  delay(500);
+  dataRecorderTask.start();
 }
 
 void loop() {

@@ -10,10 +10,11 @@
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
 static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; // talar0 - centrala
 
-Application::Application(QueueHandle_t haQueueHandle) : heaterEspNow(LED_PIN), 
+Application::Application(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : heaterEspNow(LED_PIN), 
     mainTaskQueue(10),
-    powerMeasurementTimer(POWER_MEASUREMENT_TIMER_ID, 5000, SystemTimer::Mode::OneShot, ActiveQueueRef<TimerEvent>(mainTaskQueue.nativeHandle())),
-    haQueueRef(haQueueHandle)
+    timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage()),
+    haQueueRef(haQueueHandle),
+    dataRecorderQueueRef(dataRecorderQueueHandle)
 {
 
 }
@@ -27,7 +28,7 @@ void Application::setup() {
     heaterEspNow.registerTransport(&transport);
     powerMeter.registerTransport(&transport);
 
-    powerMeasurementTimer.start(25000);
+    timer.start(25000);
     rtc.setup();
     setupSystemTime();
 
@@ -48,11 +49,11 @@ void Application::setupSystemTime() {
 }
 
 void Application::loop() {
-    TimerEvent evt;
+    ApplicationMessagePacket evt;
 
     if (mainTaskQueue.receive(evt, 100)) {
-        switch (evt.timerId) {
-            case POWER_MEASUREMENT_TIMER_ID:
+        switch (evt.type) {
+            case ApplicationCommandType::Timer:
                 Serial.println("Sent power measurement request");
                 haQueueRef.send(SystemMessagePacket{
                     .type = SystemDataType::Measurements,
@@ -60,7 +61,7 @@ void Application::loop() {
                         .measurementData = generateRandomMeasurement()
                     }
                 });
-                powerMeasurementTimer.start(5000); // restart timer
+                timer.start(5000); // restart timer
                 break;
 
             default:
@@ -93,6 +94,7 @@ void Application::loop() {
     }
 }
 
+//this call is from ISR context - avoid havy operations here
 void Application::handlePacket(const MatterPacketWithMac &pkt) {
  Serial.println(F("=== MatterLikePacket ==="));
     MatterLikeDebugger::print(pkt);
