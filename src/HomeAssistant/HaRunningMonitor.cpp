@@ -1,6 +1,7 @@
 #include "HaRunningMonitor.h"
 #include "MqttMeasurementsPublisher.h"
-#include "Utils/TimeUtils.h"
+#include "TimeUtils.h"
+#include "Log.h"
 
 #include <time.h>
 #include <Arduino.h>
@@ -48,7 +49,7 @@ HaRunningMonitor::Result HaRunningMonitor::step() {
 
 bool HaRunningMonitor::publishHeartbeat(uint32_t epoch) {
     if (!_client.connected()) {
-        Serial.println("MQTT not connected, skipping heartbeat publish");
+        LOG_INFO("MQTT not connected, skipping heartbeat publish");
         return false;
     }
 
@@ -56,7 +57,7 @@ bool HaRunningMonitor::publishHeartbeat(uint32_t epoch) {
     _client.loop();
     bool ok = _statusPublisher.publishOnlineHeartbeat(epoch);
     if (!ok) {
-        Serial.println("MQTT heartbeat publish FAILED");
+        LOG_ERROR("MQTT heartbeat publish FAILED");
     }
     return ok;
 }

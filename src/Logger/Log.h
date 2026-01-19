@@ -21,6 +21,7 @@ inline void LogDebugf(const char* fmt, Args... args) {
 inline void LogDetailDebug(const char* msg) {
     Logger::instance().log(LogLevel::detailDebug, LogNowSeconds(), msg);
 }
+template<typename... Args>
 inline void LogDetailDebugf(const char* fmt, Args... args) {
     Logger::instance().logf(LogLevel::detailDebug, LogNowSeconds(), fmt, args...);
 }

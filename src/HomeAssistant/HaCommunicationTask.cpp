@@ -1,6 +1,7 @@
 #include  "HaCommunicationTask.h"
 #include  "MqttConfiguration.h"
 #include  "CommunicationParams.h"
+#include  "Log.h"
 
 #define MODEM_RX 13  // ESP32 RX -> TX modemu
 #define MODEM_TX 14  // ESP32 TX -> RX modemu
@@ -43,13 +44,12 @@ void HaCommunicationTask::loop()
         }
         else if (msg.type == SystemDataType::Measurements) {
             if (_state != ModemState::Running) {
-                Serial.println("Cannot publish, modem not running yeat");
+                LOG_INFO("Cannot publish, modem not running yeat");
             } else if (!mqttClient.connected()) {
-                Serial.println("MQTT disconnected, Measurements");
+                LOG_ERROR("MQTT disconnected, Measurements");
                 findReasonAndReconnect();
             } else if (!measPublisher.publishPacket(msg.payload.measurementData)) {
-                Serial.println("Publish measurement packet failed - reconnecting...");
-                Serial.println("MQTT publishPacket, failed");
+                LOG_ERROR("Publish measurement packet failed - reconnecting...");
                 findReasonAndReconnect();
             }
         }
@@ -92,7 +92,7 @@ void HaCommunicationTask::connectionManager(ModemState s) {
 
 // --- Dedicated handlers for each ModemState ---
 void HaCommunicationTask::handleModemPowerOn() {
-    Serial.println("Powering on modem...");
+    LOG_INFO("Modem power ON");
     modemPowerOn();
     clearSoftwareErrorCounters();
     _state = ModemState::InitSerial;
@@ -101,13 +101,13 @@ void HaCommunicationTask::handleModemPowerOn() {
 
 void HaCommunicationTask::handleInitSerial() {
     hardwareModem.begin(57600, SERIAL_8N1, MODEM_RX, MODEM_TX);
-    Serial.println("Serial started");
+    LOG_INFO("Serial started");
     _state = ModemState::SoftwareRestartModem;
     timer.start(150);
 }
 
 void HaCommunicationTask::handleSoftwareRestartModem() {
-    Serial.println("Restarting modem...");
+    LOG_INFO("Restarting modem...");
     const auto res = resetter.step();
     switch (res.next) {
         case ResetSim7000Modem::Next::Stay:
@@ -127,14 +127,14 @@ void HaCommunicationTask::handleSoftwareRestartModem() {
 }
 
 void HaCommunicationTask::handleWaitForNetwork() {
-    Serial.println("Waiting for network (poll)...");
+    LOG_INFO("Waiting for network (poll)...");
     const auto res = waitForNetworkMonitor.step();
     switch (res.next) {
         case WaitForNetworkMonitor::Next::Stay:
             _state = ModemState::WaitForNetwork;
             break;
         case WaitForNetworkMonitor::Next::GprsConnect:
-            Serial.println("Network OK");
+            LOG_INFO("Network OK");
             _state = ModemState::GprsConnect;
             break;
         case WaitForNetworkMonitor::Next::SoftwareRestartModem:
@@ -145,14 +145,13 @@ void HaCommunicationTask::handleWaitForNetwork() {
 }
 
 void HaCommunicationTask::handleGprsConnect() {
-    Serial.print("Connecting to APN: ");
-    Serial.println(_apn);
+    LOG_INFO("Connecting to APN: %s", _apn);
     if (tinyGsmModem.gprsConnect(_apn)) {
-        Serial.println("GPRS OK");
+        LOG_INFO("GPRS OK");
         _state = ModemState::MqttConnect;
         timer.start(100);
     } else {
-        Serial.println("GPRS connect failed, retrying...");
+        LOG_INFO("GPRS connect failed, retrying...");
         _errorGprsConnectCounter++;
         if (_errorGprsConnectCounter >= MAX_GPRS_CONNECT_ATTEMPTS) {
             _state = ModemState::SoftwareRestartModem;
@@ -162,18 +161,17 @@ void HaCommunicationTask::handleGprsConnect() {
 }
 
 void HaCommunicationTask::handleMqttConnect() {
-    Serial.println("Attempting MQTT connect...");
+    LOG_INFO("Attempting MQTT connect...");
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     // Tune MQTT session for cellular link stability
     //todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
     if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS)) {
-        Serial.println("MQTT connected");
+        LOG_INFO("MQTT connected");
         _state = ModemState::Running;
         clearSoftwareErrorCounters();
         timer.start(100);
     } else {
-        Serial.print("MQTT connect failed, rc=");
-        Serial.println(mqttClient.state());
+        LOG_INFO("MQTT connect failed, rc=%d", mqttClient.state());
         _errorMqttConnectCounter++;
         if (_errorMqttConnectCounter >= MAX_MQTT_CONNECT_ATTEMPTS) {
             _state = ModemState::GprsConnect;
@@ -187,8 +185,7 @@ void HaCommunicationTask::handleRunning() {
 
     const auto res = runningMonitor.step();
     if (res.next == HaRunningMonitor::Next::ReconnectNeeded) {
-        Serial.print("MQTT disconnected, state:running-timer, rc=");
-        Serial.println(mqttClient.state());
+        LOG_ERROR("MQTT disconnected, state:handleRunning rc=%d", mqttClient.state());
         findReasonAndReconnect();
         return; // timer is started inside findReasonAndReconnect()
     }
@@ -240,13 +237,12 @@ void HaCommunicationTask::handleError() {
         timer.start(TIME_1_HOUR);
     }
 
-    Serial.println("Modem state ERROR: hardware reset: ");
-    Serial.println(_hardwerModemReserCounter);
+    LOG_ERROR("Modem state ERROR: hardware reset: %d", _hardwerModemReserCounter);
     clearSoftwareErrorCounters();
 }
 
 void HaCommunicationTask::handleModemPowerOff() {
-    Serial.println("Powering off modem...");
+    LOG_INFO("Powering off modem...");
     _hardwerModemReserCounter++;
     modemPowerOff();
     _state = ModemState::ModemPowerOn;

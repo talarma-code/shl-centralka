@@ -31,6 +31,7 @@ void DataRecorderTask::loop()
         if (!sdRecorder.append(SdRecorder::FileType::Logs, logLine)) {
             Serial.println("Failed to write log to SD");
         } else {
+            //TODO: remove debug print
             Serial.println("Log saved to SD: ");
             Serial.println(logLine.c_str());
         }

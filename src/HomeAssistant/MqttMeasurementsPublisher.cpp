@@ -1,12 +1,13 @@
 #include "MqttMeasurementsPublisher.h"
-#include "Utils/TimeUtils.h"
+#include "TimeUtils.h"
+#include "Log.h"
 
 bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     // Reset counters for this packet so that we can decide
     _publishSuccessCount = 0;
     _punlishFailureCount = 0;
-    _client.loop();
-    delay(60);
+    _client.loop();         //this is cricial to keep connection alive and avoid publish failures
+    delay(60);              //this is cricial to keep connection alive and avoid publish failures
 
     publishUint("power/l1", m.L1Power);
     publishUint("power/l2", m.L2Power);
@@ -18,10 +19,7 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     publishUint("heater/enable_seconds", m.HeaterEnableForSeconds);
     _client.loop();
 
-    Serial.print("MQTT publish: success=");
-    Serial.print(_publishSuccessCount);
-    Serial.print(", fail=");    
-    Serial.println(_punlishFailureCount);
+    LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);
 
     // If 3 or more individual publishes in this packet failed,
     // treat the whole packet as failed so caller can trigger reconnect.
@@ -36,10 +34,7 @@ bool MqttMeasurementsPublisher::publishOnlineHeartbeat(uint32_t epoch) {
     delay(60);       //this is cricial to keep connection alive and avoid publish failures
     StaticString32 ts = formatIsoTimestamp(epoch);
 
-    Serial.print("Publishing online heartbeat with timestamp: ");
-    Serial.println(ts.c_str()); 
-    Serial.print("_baseTopic: ");
-    Serial.println(_baseTopic);
+    LOG_DEBUG("Publishing online heartbeat with timestamp: %s", ts.c_str());
     return publishTopicPayload("online", ts.c_str());
 }
 
@@ -84,7 +79,7 @@ bool MqttMeasurementsPublisher::publishTopicPayload(const char* fieldName, const
             ok = _client.publish(t, payload);
             if (ok) break;
             delay(60);               // krótki backoff żeby opróżnić bufor TCP
-            Serial.println("retry...");
+            LOG_DEBUG("publish retry...");
             _client.loop();
         }
 
