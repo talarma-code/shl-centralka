@@ -11,6 +11,7 @@ static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31};
 static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; // talar0 - centrala
 
 Application::Application(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : heaterEspNow(LED_PIN), 
+    heaterFsm(heaterEspNow),
     mainTaskQueue(10),
     timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage()),
     haQueueRef(haQueueHandle),
@@ -64,6 +65,17 @@ void Application::loop() {
                 timer.start(5000); // restart timer
                 break;
 
+            case ApplicationCommandType::MatterPacket: {
+                auto res = heaterFsm.step(evt.payload.matterPacket);
+                if (res.hasCommand) {
+                    // For now we just have the HeaterCommandPacket ready
+                    // for future processing or forwarding.
+                    HeaterCommandPacket cmd = res.command;
+                    (void)cmd; // suppress unused warning until used
+                }
+                break;
+            }
+
             default:
                 Serial.println("Unknown timer event");
                 break;
@@ -96,8 +108,10 @@ void Application::loop() {
 
 //this call is from ISR context - avoid havy operations here
 void Application::handlePacket(const MatterPacketWithMac &pkt) {
- Serial.println(F("=== MatterLikePacket ==="));
-    MatterLikeDebugger::print(pkt);
+    ApplicationMessagePacket msg{};
+    msg.type = ApplicationCommandType::MatterPacket;
+    msg.payload.matterPacket = pkt;
+    mainTaskQueue.sendFromISR(msg, nullptr);
 }
 
 

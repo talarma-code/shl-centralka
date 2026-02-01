@@ -9,6 +9,7 @@
 #include "IntertaskDataModel.h"
 #include "RtcDs3231.h"
 #include "ApplicationDataModel.h"
+#include "HeaterFsm.h"
 
 class TimerToApplicationMessage {
     public:
@@ -34,6 +35,7 @@ private:
     static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
     EspNowTransport transport;
     HeaterEspNow heaterEspNow;
+    HeaterFsm heaterFsm;
     PowerMeter powerMeter;
     RtcDs3231 rtc;
 
