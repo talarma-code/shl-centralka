@@ -6,7 +6,7 @@
 #include "GlobalTypes.h"
 
 // Default CS pin for SD on ESP32 DevKit
-#define SD_CS_PIN 5
+#define SD_CS_PIN 21
 
 // -------------------- SdRecorder class --------------------
 class SdRecorder {

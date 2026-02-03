@@ -29,6 +29,9 @@ void Application::setup() {
     heaterEspNow.registerTransport(&transport);
     powerMeter.registerTransport(&transport);
 
+    // Setup physical OR-WE-504 Modbus meter
+    //orwe504Meter.setup();
+
     timer.start(25000);
     rtc.setup();
     setupSystemTime();
@@ -55,15 +58,21 @@ void Application::loop() {
     if (mainTaskQueue.receive(evt, 100)) {
         switch (evt.type) {
             case ApplicationCommandType::Timer:
+            {
+                MeasurementDataPacket data = generateRandomMeasurement();
                 Serial.println("Sent power measurement request");
-                haQueueRef.send(SystemMessagePacket{
-                    .type = SystemDataType::Measurements,
-                    .payload = {
-                        .measurementData = generateRandomMeasurement()
-                    }
-                });
+                SystemMessagePacket haMsg;
+                haMsg.type = SystemDataType::Measurements;
+                haMsg.payload.measurementData = data;
+                haQueueRef.send(haMsg);
+
+                SystemMessagePacket drMsg;
+                drMsg.type = SystemDataType::Measurements;
+                drMsg.payload.measurementData = data;
+                dataRecorderQueueRef.send(drMsg);
                 timer.start(5000); // restart timer
                 break;
+            }
 
             case ApplicationCommandType::MatterPacket: {
                 auto res = heaterFsm.step(evt.payload.matterPacket);
@@ -115,6 +124,32 @@ void Application::handlePacket(const MatterPacketWithMac &pkt) {
 }
 
 
+void Application::measure()
+{
+             const uint8_t slaveId = 1; // Modbus address of OR-WE-504
+
+                float voltage      = orwe504Meter.voltage(slaveId);
+                float current      = orwe504Meter.electricCurrent(slaveId);
+                float freq         = orwe504Meter.frequency(slaveId);
+                float pActive      = orwe504Meter.activePower(slaveId);
+                float pReactive    = orwe504Meter.reactivePower(slaveId);
+                float pApparent    = orwe504Meter.apparentPower(slaveId);
+                float powerFactor  = orwe504Meter.powerFactor(slaveId);
+                float energyActive = orwe504Meter.totalActivePower(slaveId);
+
+                Serial.println("[OR-WE-504] Measurements:");
+                Serial.print("  Voltage [V]:         "); Serial.println(voltage, 2);
+                Serial.print("  Current [A]:         "); Serial.println(current, 3);
+                Serial.print("  Frequency [Hz]:      "); Serial.println(freq, 2);
+                Serial.print("  Active Power [W]:    "); Serial.println(pActive, 2);
+                Serial.print("  Reactive Power [var]:"); Serial.println(pReactive, 2);
+                Serial.print("  Apparent Power [VA]: "); Serial.println(pApparent, 2);
+                Serial.print("  Power factor [-]:    "); Serial.println(powerFactor, 3);
+                Serial.print("  Active energy [kWh]: "); Serial.println(energyActive, 3);
+
+                // Opcjonalnie: restart timera, aby cyklicznie odświeżać pomiary
+                timer.start(5000);
+}
 
 
 // Złoty środek (praktyka)

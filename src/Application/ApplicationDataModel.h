@@ -1,4 +1,6 @@
-#pragma once;
+﻿#ifndef APPLICATION_DATA_MODEL_H
+#define APPLICATION_DATA_MODEL_H
+
 #include "MatterLikePacket.h"
 #include "SystemTimer.h"
 
@@ -21,8 +23,6 @@ struct HeaterCommandPacket {
     uint32_t power;
 };
 
-
-
 struct ApplicationMessagePacket {
     ApplicationCommandType type;
     union {
@@ -31,3 +31,5 @@ struct ApplicationMessagePacket {
         HeaterCommandPacket heaterCommandPacket;
     } payload;
 };
+
+#endif // APPLICATION_DATA_MODEL_H

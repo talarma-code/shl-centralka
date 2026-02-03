@@ -3,6 +3,7 @@
 #include "IMatterReceiver.h"
 #include "HeaterEspNow.h"
 #include "PowerMeter.h"
+#include "ORWE504PowerMeter.h"
 #include "ActiveQueue.h"
 #include "ActivePoolRef.h"
 #include "SystemTimer.h"
@@ -31,12 +32,15 @@ public:
     MeasurementDataPacket generateRandomMeasurement();
     void setupSystemTime(); 
 
+    void measure();
+
 private:
     static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
     EspNowTransport transport;
     HeaterEspNow heaterEspNow;
     HeaterFsm heaterFsm;
     PowerMeter powerMeter;
+    ORWE504PowerMeter orwe504Meter;
     RtcDs3231 rtc;
 
     ActiveQueue<ApplicationMessagePacket> mainTaskQueue;
