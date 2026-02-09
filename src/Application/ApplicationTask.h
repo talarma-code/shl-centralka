@@ -1,6 +1,7 @@
 #pragma once
 #include "EspNowTransport.h"
 #include "IMatterReceiver.h"
+#include "ActiveTask.h"
 #include "HeaterEspNow.h"
 #include "PowerMeter.h"
 #include "ORWE504PowerMeter.h"
@@ -23,11 +24,11 @@ class TimerToApplicationMessage {
 };
 
 
-class Application : public IMatterReceiver {
+class ApplicationTask : public IMatterReceiver, public ActiveTask {
 public:
-    Application(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle);      
-    void setup();         // setup Arduino
-    void loop();          // loop Arduino
+    ApplicationTask(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle);      
+    void setup() override;        
+    void loop() override;         
     void handlePacket(const MatterPacketWithMac &pkt) override;
     MeasurementDataPacket generateRandomMeasurement();
     void setupSystemTime(); 
@@ -35,6 +36,8 @@ public:
     void measure();
 
 private:
+    void sendMeasurementToHa(const MeasurementDataPacket& data);
+    uint32_t haQueueFullStreak = 0; 
     static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
     EspNowTransport transport;
     HeaterEspNow heaterEspNow;

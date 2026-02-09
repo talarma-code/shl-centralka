@@ -54,6 +54,7 @@ void HaCommunicationTask::loop()
             }
         }
     }
+    resetWatchdog();
 }
 
 void HaCommunicationTask::connectionManager(ModemState s) {

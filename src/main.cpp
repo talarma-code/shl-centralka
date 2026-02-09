@@ -1,21 +1,30 @@
 #include <Arduino.h>
-#include "Application.h"
+#include "ApplicationTask.h"
 #include "HaCommunicationTask.h"
 #include "DataRecorderTask.h"
+#include "ActiveTask.h"
+#include "esp_task_wdt.h"
 
 
 HaCommunicationTask haCommunicationTask;
 DataRecorderTask dataRecorderTask;
-Application application(haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
+ApplicationTask application(haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
 
 void setup() {
-  application.setup();
+
+  // Enable watchdog monitoring for selected FreeRTOS tasks
+  application.enableWatchdog(true);
+  dataRecorderTask.enableWatchdog(true);
+
   delay(500); // Give some time for setup
   haCommunicationTask.start();
   delay(500);
-  dataRecorderTask.start();
+  dataRecorderTask.start(); 
+  delay(500);
+  application.start();
+  delay(500);
 }
 
 void loop() {
-  application.loop();
+  vTaskDelay(portMAX_DELAY); // sleep forever, all work is done in task
 }

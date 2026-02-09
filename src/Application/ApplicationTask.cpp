@@ -1,8 +1,9 @@
-#include "Application.h"
+#include "ApplicationTask.h"
 #include <Arduino.h>
 #include "MatterLikeDebugger.h"
 #include "SystemDebuger.h"
 #include "ActiveQueueRef.h"
+#include "Log.h"
 #include <esp_system.h>
 #include <sys/time.h>
 
@@ -10,7 +11,9 @@
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
 static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; // talar0 - centrala
 
-Application::Application(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : heaterEspNow(LED_PIN), 
+ApplicationTask::ApplicationTask(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : 
+    ActiveTask("application", 8192, 1),
+    heaterEspNow(LED_PIN), 
     heaterFsm(heaterEspNow),
     mainTaskQueue(10),
     timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage()),
@@ -20,7 +23,7 @@ Application::Application(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorder
 
 }
 
-void Application::setup() {
+void ApplicationTask::setup() {
     Serial.begin(115200);
     Serial.println("\n=== SHL Centralka Start ===");
     
@@ -38,7 +41,7 @@ void Application::setup() {
 
 }
 
-void Application::setupSystemTime() {
+void ApplicationTask::setupSystemTime() {
     DateTime now = rtc.now();
 
     // Ustaw systemowy czas (time(nullptr)) na podstawie RTC
@@ -52,7 +55,7 @@ void Application::setupSystemTime() {
     rtc.print(now);
 }
 
-void Application::loop() {
+void ApplicationTask::loop() {
     ApplicationMessagePacket evt;
 
     if (mainTaskQueue.receive(evt, 100)) {
@@ -61,10 +64,7 @@ void Application::loop() {
             {
                 MeasurementDataPacket data = generateRandomMeasurement();
                 Serial.println("Sent power measurement request");
-                SystemMessagePacket haMsg;
-                haMsg.type = SystemDataType::Measurements;
-                haMsg.payload.measurementData = data;
-                haQueueRef.send(haMsg);
+                sendMeasurementToHa(data);
 
                 SystemMessagePacket drMsg;
                 drMsg.type = SystemDataType::Measurements;
@@ -115,8 +115,24 @@ void Application::loop() {
     }
 }
 
+void ApplicationTask::sendMeasurementToHa(const MeasurementDataPacket& data) {
+    SystemMessagePacket haMsg;
+    haMsg.type = SystemDataType::Measurements;
+    haMsg.payload.measurementData = data;
+    if(!haQueueRef.send(haMsg, 50)) {           
+        haQueueFullStreak++;
+        LOG_ERROR("HaQueue full, streak: %u", haQueueFullStreak);
+
+        if (haQueueFullStreak >= 3) {        
+            esp_restart();
+        }
+    } else {
+        haQueueFullStreak = 0;       
+    }
+}
+
 //this call is from ISR context - avoid havy operations here
-void Application::handlePacket(const MatterPacketWithMac &pkt) {
+void ApplicationTask::handlePacket(const MatterPacketWithMac &pkt) {
     ApplicationMessagePacket msg{};
     msg.type = ApplicationCommandType::MatterPacket;
     msg.payload.matterPacket = pkt;
@@ -124,7 +140,7 @@ void Application::handlePacket(const MatterPacketWithMac &pkt) {
 }
 
 
-void Application::measure()
+void ApplicationTask::measure()
 {
              const uint8_t slaveId = 1; // Modbus address of OR-WE-504
 
@@ -164,7 +180,7 @@ void Application::measure()
 // char buffer[32];
 // DateTime(unixTime).toString(buffer, "YYYY-MM-DD hh:mm:ss");
 
-MeasurementDataPacket Application::generateRandomMeasurement() {
+MeasurementDataPacket ApplicationTask::generateRandomMeasurement() {
     static bool seeded = false;
     if (!seeded) {
         randomSeed((uint32_t)esp_random());

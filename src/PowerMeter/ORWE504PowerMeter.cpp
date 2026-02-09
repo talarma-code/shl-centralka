@@ -16,7 +16,7 @@
 
 void ORWE504PowerMeter::setup() {
     //for hardware configuration: connect Tx from ESP32 board to TX on Rs485 converter board, the same for RX
-    Serial2.begin(9600, SERIAL_8N1, 32, 33); // RX2 = 32(GPIO32), TX2 = 33(GPIO33)
+    Serial2.begin(9600, SERIAL_8N1, 33, 32); // RX2 = 33(GPIO33), TX2 = 32(GPIO32)
 }
 
 float ORWE504PowerMeter::voltage(uint8_t slaveId) {

@@ -64,6 +64,7 @@ void DataRecorderTask::loop()
             }
         }
     }
+    resetWatchdog();
 }
 
 QueueHandle_t DataRecorderTask::logsQueue() {
