@@ -6,7 +6,6 @@
 #include "WaitForNetworkMonitor.h"
 #include "MqttMeasurementsPublisher.h"
 #include "HaRunningMonitor.h"
-
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
 #include "IntertaskDataModel.h"
@@ -27,7 +26,7 @@ class TimerToSystemMessage {
 
 class HaCommunicationTask : public ActiveTask {
 public:
-    HaCommunicationTask();
+    HaCommunicationTask(QueueHandle_t mainTaskQueueHandle);
     void setup() override;
     void loop() override;
     QueueHandle_t getQueueHandle() const {
@@ -47,6 +46,7 @@ private:
     };
 
     ActiveQueue<SystemMessagePacket> haQueue;
+    ActiveQueueRef<ApplicationMessagePacket> mainTaskQueue;
     SystemTimerT<SystemMessagePacket, TimerToSystemMessage> timer;
     HardwareSerial hardwareModem;
     TinyGsmSim7000 tinyGsmModem;
@@ -75,17 +75,15 @@ private:
      void findReasonAndReconnect();
 
      // --- Handlers for each ModemState ---
-     void handleModemPowerOn();
-     void handleInitSerial();
-     void handleSoftwareRestartModem();
-     void handleWaitForNetwork();
-     void handleGprsConnect();
-     void handleMqttConnect();
-     void handleRunning();
-     void handleError();
-     void handleModemPowerOff();
+    void handleModemPowerOn();
+    void handleInitSerial();
+    void handleSoftwareRestartModem();
+    void handleWaitForNetwork();
+    void handleGprsConnect();
+    void handleMqttConnect();
+    void handleRunning();
+    void handleError();
+    void handleModemPowerOff();
 
-
-
-
+    uint32_t syncNetworkTime();
 };

@@ -2,13 +2,19 @@
 #include  "MqttConfiguration.h"
 #include  "CommunicationParams.h"
 #include  "Log.h"
+#include  "IntertaskDataModel.h"
+
+#include <sys/time.h>
+#include <time.h>
+#include "RTClib.h"
 
 #define MODEM_RX 13  // ESP32 RX -> TX modemu
 #define MODEM_TX 14  // ESP32 TX -> RX modemu
 #define HARDWARE_MODEM_NUMBER 2  
 
-HaCommunicationTask::HaCommunicationTask() : ActiveTask("HaCommunicationTask", 10240, 3, 1),
+HaCommunicationTask::HaCommunicationTask(QueueHandle_t mainTaskQueueHandle) : ActiveTask("HaCommunicationTask", 10240, 3, 1),
     haQueue(10), 
+    mainTaskQueue(mainTaskQueueHandle),
     timer(1, 1000, SystemTimerT<SystemMessagePacket, TimerToSystemMessage>::Mode::OneShot, ActiveQueueRef<SystemMessagePacket>(haQueue.nativeHandle()), TimerToSystemMessage()),
     hardwareModem (HARDWARE_MODEM_NUMBER), 
     tinyGsmModem(hardwareModem), 
@@ -53,6 +59,21 @@ void HaCommunicationTask::loop()
                 findReasonAndReconnect();
             }
         }
+        else if (msg.type == SystemDataType::RtcSync) {
+            if (_state == ModemState::Running) {
+                uint32_t epoch = syncNetworkTime();
+                if(epoch != 0) {
+                    ApplicationMessagePacket rtcSyncMsg{};
+                    rtcSyncMsg.type = ApplicationCommandType::RtcSync;  
+                    rtcSyncMsg.payload.rtcSyncCommandPacket.epochTime = epoch;
+                    mainTaskQueue.send(rtcSyncMsg);
+                }
+            } 
+            else {
+                LOG_INFO("Cannot sync RTC, modem not running yeat");
+            }
+        }
+        
     }
     resetWatchdog();
 }
@@ -168,8 +189,9 @@ void HaCommunicationTask::handleMqttConnect() {
     //todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
     if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS)) {
         LOG_INFO("MQTT connected");
-        _state = ModemState::Running;
         clearSoftwareErrorCounters();
+
+        _state = ModemState::Running;
         timer.start(100);
     } else {
         LOG_INFO("MQTT connect failed, rc=%d", mqttClient.state());
@@ -263,6 +285,33 @@ void HaCommunicationTask::clearSoftwareErrorCounters() {
     _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
 }
+
+uint32_t HaCommunicationTask::syncNetworkTime() {
+    LOG_INFO("Synchronizing network time (TinyGSM +CCLK?)...");
+
+    int year = 0;
+    int month = 0;
+    int day = 0;
+    int hour = 0;
+    int minute = 0;
+    int second = 0;
+    float timezone = 0.0f;
+
+    bool ok = tinyGsmModem.getNetworkTime(&year, &month, &day, &hour, &minute, &second, &timezone);
+    if (ok) {
+        // Convert to RTClib DateTime (timezone is returned separately by TinyGSM)
+        DateTime dt(year, month, day, hour, minute, second);
+        uint32_t epoch = dt.unixtime();
+        LOG_INFO("Network time read: %04d-%02d-%02d %02d:%02d:%02d (tz=%.2f) epoch=%lu",
+                 year, month, day, hour, minute, second, timezone, static_cast<unsigned long>(epoch));
+        return epoch;
+    } 
+    else {
+        LOG_ERROR("Failed to get network time");
+        return 0;
+    }
+}
+
 
 //todo: issueses
 // 1. changne reset modem logic - use AT command instead of library 

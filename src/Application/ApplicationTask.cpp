@@ -11,14 +11,14 @@
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
 static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; // talar0 - centrala
 
-ApplicationTask::ApplicationTask(QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : 
+ApplicationTask::ApplicationTask(QueueHandle_t mainTaskQueueHandle, QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : 
     ActiveTask("application", 8192, 1),
     heaterEspNow(LED_PIN), 
     heaterFsm(heaterEspNow),
-    mainTaskQueue(10),
-    timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage()),
+    mainTaskQueue(mainTaskQueueHandle),
     haQueueRef(haQueueHandle),
-    dataRecorderQueueRef(dataRecorderQueueHandle)
+    dataRecorderQueueRef(dataRecorderQueueHandle),
+    timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage())
 {
 
 }
@@ -26,6 +26,8 @@ ApplicationTask::ApplicationTask(QueueHandle_t haQueueHandle, QueueHandle_t data
 void ApplicationTask::setup() {
     Serial.begin(115200);
     Serial.println("\n=== SHL Centralka Start ===");
+
+    logLastResetReason();
     
     transport.begin(MAC_CENTRALKA, MAC_LOCAL_HEATER);
     transport.onPacketReceived(this);
@@ -39,6 +41,27 @@ void ApplicationTask::setup() {
     rtc.setup();
     setupSystemTime();
 
+}
+
+void ApplicationTask::logLastResetReason() {
+    esp_reset_reason_t reason = esp_reset_reason();
+    const char* reasonStr = "UNKNOWN";
+
+    switch (reason) {
+        case ESP_RST_POWERON:    reasonStr = "POWERON"; break;
+        case ESP_RST_EXT:        reasonStr = "EXTERNAL"; break;
+        case ESP_RST_SW:         reasonStr = "SW"; break;
+        case ESP_RST_PANIC:      reasonStr = "PANIC"; break;
+        case ESP_RST_INT_WDT:    reasonStr = "INT_WDT"; break;
+        case ESP_RST_TASK_WDT:   reasonStr = "TASK_WDT"; break;
+        case ESP_RST_WDT:        reasonStr = "OTHER_WDT"; break;
+        case ESP_RST_DEEPSLEEP:  reasonStr = "DEEPSLEEP"; break;
+        case ESP_RST_BROWNOUT:   reasonStr = "BROWNOUT"; break;
+        case ESP_RST_SDIO:       reasonStr = "SDIO"; break;
+        default:                 reasonStr = "UNKNOWN"; break;
+    }
+
+    LOG_ERROR("Last reset reason: %s (%d)", reasonStr, static_cast<int>(reason));
 }
 
 void ApplicationTask::setupSystemTime() {
@@ -84,7 +107,15 @@ void ApplicationTask::loop() {
                 }
                 break;
             }
-
+            
+            case ApplicationCommandType::RtcSync: {
+                uint32_t epochTime = evt.payload.rtcSyncCommandPacket.epochTime;
+                DateTime dt(epochTime);
+                rtc.set(dt);
+                Serial.print("RTC synchronized to epoch time: ");
+                rtc.print(dt);
+                break;
+            }
             default:
                 Serial.println("Unknown timer event");
                 break;
@@ -109,8 +140,14 @@ void ApplicationTask::loop() {
             powerMeter.voltage(1);
             //action Off
         }
-
+        if (characterRecived == 'r') {
+            SystemMessagePacket drMsg;
+            drMsg.type = SystemDataType::RtcSync;
+            haQueueRef.send(drMsg);
+        }
+        
         SystemDebuger::printSystemStats();
+        delay(1000);
 
     }
 }

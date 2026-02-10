@@ -1,13 +1,18 @@
 #pragma once
+
 #include <Arduino.h>
 #include "esp_system.h"
 #include "StaticString.h"
 #include "GlobalTypes.h"
+#include "MatterLikePacket.h"
+#include "SystemTimer.h"
+
 
 enum class SystemDataType : uint8_t {
     Measurements = 0,
     Events = 1,
-    Timer = 2
+    Timer = 2,
+    RtcSync = 3
 };
 
 enum class MeasurementDataType : uint8_t {
@@ -48,7 +53,7 @@ struct SystemMessagePacket {
     } payload;
 
 };
-
+//-------------------------------------------------------------------
 enum class LogLevel : uint8_t {
     detailDebug = 0,
     debug = 1,
@@ -62,5 +67,40 @@ struct SystemLogPacket  {
     uint32_t timestamp;
     StaticString96 logMessage;
 };
+//-------------------------------------------------------------------
 
+enum class ApplicationCommandType : uint8_t {
+    Timer = 0,
+    MatterPacket = 1,
+    HeaterCommand = 2,
+    RtcSync = 3
+};
+
+enum class HeaterCommandType : uint8_t {
+    Unused = 0,
+    Ack = 1,
+    State = 2,
+    Power = 3
+};
+
+struct HeaterCommandPacket {
+    HeaterCommandType type;
+    bool state;
+    uint32_t power;
+};
+
+struct RtcSyncCommandPacket {
+    uint32_t epochTime;
+};
+
+struct ApplicationMessagePacket {
+    ApplicationCommandType type;
+    union {
+        TimerEvent timerEvent;
+        MatterPacketWithMac matterPacket;
+        HeaterCommandPacket heaterCommandPacket;
+        RtcSyncCommandPacket rtcSyncCommandPacket;
+    } payload;
+};
+//-------------------------------------------------------------------
 

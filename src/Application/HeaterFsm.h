@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include "ApplicationDataModel.h"
+#include "IntertaskDataModel.h"
 #include "MatterLike.h"
 #include "HeaterEspNow.h"
 

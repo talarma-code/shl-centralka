@@ -4,11 +4,14 @@
 #include "DataRecorderTask.h"
 #include "ActiveTask.h"
 #include "esp_task_wdt.h"
+#include "ActiveQueue.h"
 
 
-HaCommunicationTask haCommunicationTask;
+ActiveQueue<ApplicationMessagePacket> mainTaskQueue(10);
+
+HaCommunicationTask haCommunicationTask(mainTaskQueue.nativeHandle());
 DataRecorderTask dataRecorderTask;
-ApplicationTask application(haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
+ApplicationTask application(mainTaskQueue.nativeHandle(), haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
 
 void setup() {
 
