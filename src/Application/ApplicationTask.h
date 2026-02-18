@@ -10,6 +10,7 @@
 #include "IntertaskDataModel.h"
 #include "RtcDs3231.h"
 #include "HeaterFsm.h"
+#include "ORWE520PowerMeter.h"
 
 class TimerToApplicationMessage {
     public:
@@ -49,6 +50,8 @@ private:
     ActiveQueueRef<SystemMessagePacket> haQueueRef;
     ActiveQueueRef<SystemMessagePacket> dataRecorderQueueRef;
     SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage> timer;
+
+    ORWE520PowerMeter orwe520PowerMeter;
 
 
 };

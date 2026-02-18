@@ -36,6 +36,7 @@ void ApplicationTask::setup() {
 
     // Setup physical OR-WE-504 Modbus meter
     //orwe504Meter.setup();
+    orwe520PowerMeter.setup();
 
     timer.start(25000);
     rtc.setup();
@@ -86,8 +87,17 @@ void ApplicationTask::loop() {
             case ApplicationCommandType::Timer:
             {
                 MeasurementDataPacket data = generateRandomMeasurement();
-                Serial.println("Sent power measurement request");
+                //Serial.println("Sent power measurement request");
                 sendMeasurementToHa(data);
+
+                orwe520PowerMeter.update(); // Update pulse count and power calculation 
+                Serial.println("--------------------------------------------");
+                Serial.print("ORWE520 Current Power [kW]: ");
+                Serial.println(orwe520PowerMeter.currentPowerKW());
+                Serial.print("ORWE520 Total Energy [kWh]: ");
+                Serial.println(orwe520PowerMeter.totalEnergyKWh());
+                Serial.print("ORWE520 Total Pulses: ");
+                Serial.println(orwe520PowerMeter.totalPulses());
 
                 SystemMessagePacket drMsg;
                 drMsg.type = SystemDataType::Measurements;
