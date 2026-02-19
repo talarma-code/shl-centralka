@@ -4,13 +4,14 @@
 #include "ActiveTask.h"
 #include "HeaterEspNow.h"
 #include "PowerMeter.h"
-#include "ORWE504PowerMeter.h"
+//#include "ORWE504PowerMeter.h"
 #include "ActivePoolRef.h"
 #include "SystemTimer.h"
 #include "IntertaskDataModel.h"
 #include "RtcDs3231.h"
 #include "HeaterFsm.h"
 #include "ORWE520PowerMeter.h"
+#include "SDM120CTPowerMeter.h"
 
 class TimerToApplicationMessage {
     public:
@@ -43,7 +44,7 @@ private:
     HeaterEspNow heaterEspNow;
     HeaterFsm heaterFsm;
     PowerMeter powerMeter;
-    ORWE504PowerMeter orwe504Meter;
+    //ORWE504PowerMeter orwe504Meter;
     RtcDs3231 rtc;
 
     ActiveQueueRef<ApplicationMessagePacket> mainTaskQueue;
@@ -52,6 +53,7 @@ private:
     SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage> timer;
 
     ORWE520PowerMeter orwe520PowerMeter;
+    SDM120CTPowerMeter sdm120ctPowerMeter;
 
 
 };

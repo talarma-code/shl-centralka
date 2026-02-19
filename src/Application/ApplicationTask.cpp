@@ -37,6 +37,7 @@ void ApplicationTask::setup() {
     // Setup physical OR-WE-504 Modbus meter
     //orwe504Meter.setup();
     orwe520PowerMeter.setup();
+    sdm120ctPowerMeter.setup();
 
     timer.start(25000);
     rtc.setup();
@@ -99,7 +100,12 @@ void ApplicationTask::loop() {
                 Serial.print("ORWE520 Total Pulses: ");
                 Serial.println(orwe520PowerMeter.totalPulses());
 
+                Serial.println("======================================");
+                Serial.print("SDM120CT Voltage [V]: ");
+                Serial.println(sdm120ctPowerMeter.voltage(1));
+
                 SystemMessagePacket drMsg;
+
                 drMsg.type = SystemDataType::Measurements;
                 drMsg.payload.measurementData = data;
                 dataRecorderQueueRef.send(drMsg);
@@ -189,29 +195,29 @@ void ApplicationTask::handlePacket(const MatterPacketWithMac &pkt) {
 
 void ApplicationTask::measure()
 {
-             const uint8_t slaveId = 1; // Modbus address of OR-WE-504
+            //  const uint8_t slaveId = 1; // Modbus address of OR-WE-504
 
-                float voltage      = orwe504Meter.voltage(slaveId);
-                float current      = orwe504Meter.electricCurrent(slaveId);
-                float freq         = orwe504Meter.frequency(slaveId);
-                float pActive      = orwe504Meter.activePower(slaveId);
-                float pReactive    = orwe504Meter.reactivePower(slaveId);
-                float pApparent    = orwe504Meter.apparentPower(slaveId);
-                float powerFactor  = orwe504Meter.powerFactor(slaveId);
-                float energyActive = orwe504Meter.totalActivePower(slaveId);
+            //     float voltage      = orwe504Meter.voltage(slaveId);
+            //     float current      = orwe504Meter.electricCurrent(slaveId);
+            //     float freq         = orwe504Meter.frequency(slaveId);
+            //     float pActive      = orwe504Meter.activePower(slaveId);
+            //     float pReactive    = orwe504Meter.reactivePower(slaveId);
+            //     float pApparent    = orwe504Meter.apparentPower(slaveId);
+            //     float powerFactor  = orwe504Meter.powerFactor(slaveId);
+            //     float energyActive = orwe504Meter.totalActivePower(slaveId);
 
-                Serial.println("[OR-WE-504] Measurements:");
-                Serial.print("  Voltage [V]:         "); Serial.println(voltage, 2);
-                Serial.print("  Current [A]:         "); Serial.println(current, 3);
-                Serial.print("  Frequency [Hz]:      "); Serial.println(freq, 2);
-                Serial.print("  Active Power [W]:    "); Serial.println(pActive, 2);
-                Serial.print("  Reactive Power [var]:"); Serial.println(pReactive, 2);
-                Serial.print("  Apparent Power [VA]: "); Serial.println(pApparent, 2);
-                Serial.print("  Power factor [-]:    "); Serial.println(powerFactor, 3);
-                Serial.print("  Active energy [kWh]: "); Serial.println(energyActive, 3);
+            //     Serial.println("[OR-WE-504] Measurements:");
+            //     Serial.print("  Voltage [V]:         "); Serial.println(voltage, 2);
+            //     Serial.print("  Current [A]:         "); Serial.println(current, 3);
+            //     Serial.print("  Frequency [Hz]:      "); Serial.println(freq, 2);
+            //     Serial.print("  Active Power [W]:    "); Serial.println(pActive, 2);
+            //     Serial.print("  Reactive Power [var]:"); Serial.println(pReactive, 2);
+            //     Serial.print("  Apparent Power [VA]: "); Serial.println(pApparent, 2);
+            //     Serial.print("  Power factor [-]:    "); Serial.println(powerFactor, 3);
+            //     Serial.print("  Active energy [kWh]: "); Serial.println(energyActive, 3);
 
-                // Opcjonalnie: restart timera, aby cyklicznie odświeżać pomiary
-                timer.start(5000);
+            //     // Opcjonalnie: restart timera, aby cyklicznie odświeżać pomiary
+            //     timer.start(5000);
 }
 
 
