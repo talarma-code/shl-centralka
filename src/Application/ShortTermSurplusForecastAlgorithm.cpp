@@ -12,39 +12,20 @@
     - The heater's consumption is only added to the projection if it is currently off.
 */
 
-#include "ShortTermSurplusForecastAlgorithm.h"
+#ifdef UNIT_TEST
+#include <stdint.h>
+#else
 #include <Arduino.h>
+#endif
+
+#include "ShortTermSurplusForecastAlgorithm.h"
+
 
 ShortTermSurplusForecastAlgorithm::ShortTermSurplusForecastAlgorithm(uint32_t windowSeconds)
     : lastEpoch(0), lastL1(0), lastL2(0), lastHome(0), accProducedWh(0), accConsumedWh(0), currentHour(-1), heaterOnState(false), windowSeconds(windowSeconds) {}
 
-uint32_t ShortTermSurplusForecastAlgorithm::l1Power() {
-    return 0;
-}
 
-uint32_t ShortTermSurplusForecastAlgorithm::l2Power() {
-    return 0;
-}
-
-uint32_t ShortTermSurplusForecastAlgorithm::homePowerConsumption() {
-    return 0;
-}
-
-void ShortTermSurplusForecastAlgorithm::enableHeater() {
-    if (!heaterOnState) {
-        heaterOnState = true;
-        Serial.println("Heater enabled");
-    }
-}
-
-void ShortTermSurplusForecastAlgorithm::disableHeater() {
-    if (heaterOnState) {
-        heaterOnState = false;
-        Serial.println("Heater disabled");
-    }
-}
-
-void ShortTermSurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
+bool ShortTermSurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
     uint32_t now = (uint32_t)timestamp.unixtime();
 
     // Total energy in the interval (Wh)
@@ -56,10 +37,10 @@ void ShortTermSurplusForecastAlgorithm::calculatePower(const DateTime& timestamp
         currentHour = timestamp.hour();
         accProducedWh = producedWhInterval;
         accConsumedWh = consumedWhInterval;
-        return;
+           return heaterOnState; // Fix: return heaterOnState instead of return;
     }
 
-    if (now <= lastEpoch) return;
+    if (now <= lastEpoch) return heaterOnState;
 
 
     // Accumulate for hour (optional, for stats)
@@ -97,14 +78,17 @@ void ShortTermSurplusForecastAlgorithm::calculatePower(const DateTime& timestamp
     }
 
     if (canEnable) {
-        enableHeater();
+        if (!heaterOnState) {
+            heaterOnState = true;
+        }
     } else {
         if (!heaterOnState && projectedNetIfHeaterOn >= (int32_t)toggleMarginWh) {
-            enableHeater();
+            heaterOnState = true;
         } else if (heaterOnState && projectedNetIfHeaterOn < -(int32_t)toggleMarginWh) {
-            disableHeater();
+            heaterOnState = false;
         }
     }
-
     lastEpoch = now;
+    return heaterOnState;
 }
+

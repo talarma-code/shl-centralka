@@ -11,40 +11,19 @@
     - All calculations are done in integer Wh (no floating point).
     - The heater's consumption is only added to the projection if it is currently off.
 */
+#ifdef UNIT_TEST
+#include <stdint.h>
+#else
+#include <Arduino.h>
+#endif
 
 #include "HourlySurplusForecastAlgorithm.h"
-#include <Arduino.h>
 
 HourlySurplusForecastAlgorithm::HourlySurplusForecastAlgorithm(uint32_t windowSeconds)
     : lastEpoch(0), lastL1(0), lastL2(0), lastHome(0), accProducedWh(0), accConsumedWh(0), currentHour(-1), heaterOnState(false), windowSeconds(windowSeconds) {}
 
-uint32_t HourlySurplusForecastAlgorithm::l1Power() {
-    return 0;
-}
 
-uint32_t HourlySurplusForecastAlgorithm::l2Power() {
-    return 0;
-}
-
-uint32_t HourlySurplusForecastAlgorithm::homePowerConsumption() {
-    return 0;
-}
-
-void HourlySurplusForecastAlgorithm::enableHeater() {
-    if (!heaterOnState) {
-        heaterOnState = true;
-        Serial.println("Heater enabled");
-    }
-}
-
-void HourlySurplusForecastAlgorithm::disableHeater() {
-    if (heaterOnState) {
-        heaterOnState = false;
-        Serial.println("Heater disabled");
-    }
-}
-
-void HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
+bool HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
     uint32_t now = (uint32_t)timestamp.unixtime();
 
     // Total energy in the interval (Wh)
@@ -56,19 +35,19 @@ void HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, u
         currentHour = timestamp.hour();
         accProducedWh = producedWhInterval;
         accConsumedWh = consumedWhInterval;
-        return;
+        return heaterOnState;
     }
 
-    if (now <= lastEpoch) return;
+    if (now <= lastEpoch) return heaterOnState;
 
 
     // Split the interval energy across hour boundaries proportionally (integer, rounded to 1 Wh)
+    uint32_t dtSec = windowSeconds; // Use windowSeconds for rate calculation
+    if (dtSec == 0) return heaterOnState;
     uint32_t segStart = lastEpoch;
     uint32_t segEnd = now;
     uint32_t producedLeft = producedWhInterval;
     uint32_t consumedLeft = consumedWhInterval;
-    uint32_t dtSec = windowSeconds; // Use windowSeconds for rate calculation
-    if (dtSec == 0) return;
     while (segStart < segEnd) {
         uint32_t hourIndex = segStart / 3600;
         uint32_t hourEnd = (hourIndex + 1) * 3600;
@@ -135,14 +114,17 @@ void HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, u
     }
 
     if (canEnable) {
-        enableHeater();
+        if (!heaterOnState) {
+            heaterOnState = true;
+        }
     } else {
         if (!heaterOnState && projectedNetIfHeaterOn >= (int32_t)toggleMarginWh) {
-            enableHeater();
+            heaterOnState = true;
         } else if (heaterOnState && projectedNetIfHeaterOn < -(int32_t)toggleMarginWh) {
-            disableHeater();
+            heaterOnState = false;
         }
     }
-
     lastEpoch = now;
+    return heaterOnState;
 }
+

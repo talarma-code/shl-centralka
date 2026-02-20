@@ -1,7 +1,13 @@
 // ...existing code...
 #pragma once
+#ifdef UNIT_TEST
+#include <stdint.h>
+#include "DateTime_stub.h"
+#include "RTClib_stub.h"
+#else
 #include <Arduino.h>
 #include "RTClib.h"
+#endif
 
 class HourlySurplusForecastAlgorithm {
 public:
@@ -9,14 +15,8 @@ public:
     HourlySurplusForecastAlgorithm(uint32_t windowSeconds = 180);
 
     // l1Wh, l2Wh, homeWh: energy (Wh) produced/consumed during the interval
-    void calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh);
-    uint32_t l1Power();
-    uint32_t l2Power();
-    uint32_t homePowerConsumption();
-
-    void enableHeater();
-    void disableHeater();
-
+    // Returns bool: true=heater ON, false=heater OFF (current state after call)
+    bool calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh);
 private:
     uint32_t lastEpoch;
     uint32_t lastL1;
