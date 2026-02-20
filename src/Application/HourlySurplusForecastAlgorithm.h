@@ -17,6 +17,9 @@ public:
     // l1Wh, l2Wh, homeWh: energy (Wh) produced/consumed during the interval
     // Returns bool: true=heater ON, false=heater OFF (current state after call)
     bool calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh);
+    uint32_t getAccumulatedProducedWh() const { return accProducedWh; }
+    uint32_t getAccumulatedConsumedWh() const { return accConsumedWh; }
+
 private:
     uint32_t lastEpoch;
     uint32_t lastL1;
