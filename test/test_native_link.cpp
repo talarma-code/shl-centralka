@@ -9,4 +9,4 @@ int main() {
 }
 #endif
 // Force linking of application code for native PlatformIO test
-#include "Application/HourlySurplusForecastAlgorithm.cpp"
+#include "Application/HourlySurplusAlgorithm.cpp"

@@ -1,15 +1,20 @@
 /*
-    HourlySurplusForecastAlgorithm
+    HourlySurplusAlgorithm
 
-    This algorithm manages a heater based on photovoltaic (PV) energy production and home consumption.
-    It is designed for Polish prosumer hourly netting (Tauron):
-    - The method calculatePower() is called every few minutes with energy produced/consumed in Wh for the interval.
-    - The algorithm accumulates energy produced and consumed in the current hour.
-    - It projects the energy balance to the end of the hour, assuming current rates persist.
-    - The heater (1.5 kW) is enabled if there is or will be sufficient surplus energy in the current hour.
-    - Hysteresis is used to avoid frequent toggling.
+    This algorithm manages a heater based on photovoltaic (PV) energy production
+    and home consumption within the current clock hour.
+
+    - The method calculatePower() is called every few minutes with energy
+      produced/consumed in Wh for the last measurement interval (windowSeconds).
+    - For each clock hour it accumulates total PV energy produced (L1 + L2)
+      and total home energy consumed, both in Wh.
+    - At each call it checks whether the accumulated surplus in the current
+      hour (producedWh - consumedWh) is sufficient to cover the heater's
+      energy usage for the next interval
+      (heaterPowerWhPerHour * windowSeconds / 3600).
+    - If the surplus is sufficient, the algorithm allows the heater to be ON;
+      otherwise it forces it OFF.
     - All calculations are done in integer Wh (no floating point).
-    - The heater's consumption is only added to the projection if it is currently off.
 */
 #ifdef UNIT_TEST
 #include <stdint.h>
@@ -17,13 +22,13 @@
 #include <Arduino.h>
 #endif
 
-#include "HourlySurplusForecastAlgorithm.h"
+#include "HourlySurplusAlgorithm.h"
 
-HourlySurplusForecastAlgorithm::HourlySurplusForecastAlgorithm(uint32_t windowSeconds)
+HourlySurplusAlgorithm::HourlySurplusAlgorithm(uint32_t windowSeconds)
     : lastEpoch(0), lastL1(0), lastL2(0), lastHome(0), accProducedWh(0), accConsumedWh(0), currentHour(-1), heaterOnState(false), windowSeconds(windowSeconds) {}
 
 
-bool HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
+bool HourlySurplusAlgorithm::calculatePower(const DateTime& timestamp, uint32_t l1Wh, uint32_t l2Wh, uint32_t homeWh) {
     // Reset accumulators at the start of each clock hour
     int hour = timestamp.hour();
     uint32_t producedWhInterval = l1Wh + l2Wh;
@@ -49,4 +54,3 @@ bool HourlySurplusForecastAlgorithm::calculatePower(const DateTime& timestamp, u
     }
     return heaterOnState;
 }
-

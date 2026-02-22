@@ -1,12 +1,12 @@
 extern "C" void setUp(void) {}
 extern "C" void tearDown(void) {}
 #include <unity.h>
-#include "HourlySurplusForecastAlgorithm.h"
+#include "HourlySurplusAlgorithm.h"
 #include <stdio.h>
 
 // HourlySurplus tests
 void test_hourly_surplus_always_on() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = false;
     for (int i = 0; i < 20; ++i) {
@@ -22,7 +22,7 @@ void test_hourly_surplus_always_on() {
 
 //house consumption is 2000W, production is 20W, so net is -1980W, not enough to run heater, which should stay off
 void test_hourly_surplus_always_off() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = true;
     for (int i = 0; i < 20; ++i) {
@@ -37,7 +37,7 @@ void test_hourly_surplus_always_off() {
 
 //house consumption is 2000W, production is 20W, so net is -1980W, not enough to run heater, which should stay off
 void test_hourly_surplus_production_first_30minutes() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = false;
     // Oczekiwane stany na podstawie dotychczasowych asercji
@@ -61,7 +61,7 @@ void test_hourly_surplus_production_first_30minutes() {
 
 //house consumption is 2000W, production is 20W, so net is -1980W, not enough to run heater, which should stay off
 void test_hourly_surplus_mixed_production() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = false;
     // Oczekiwane stany na podstawie dotychczasowych asercji
@@ -85,7 +85,7 @@ void test_hourly_surplus_mixed_production() {
 }
 
 void test_hourly_surplus_big_production() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = false;
     // Oczekiwane stany na podstawie dotychczasowych asercji
@@ -109,7 +109,7 @@ void test_hourly_surplus_big_production() {
 }
 
 void test_hourly_surplus_should_not_used_accumulated_power_from_previous_hour() {
-    HourlySurplusForecastAlgorithm alg;
+    HourlySurplusAlgorithm alg;
     DateTime t(2026, 2, 20, 12, 0, 0);
     bool state = false;
     // Oczekiwane stany na podstawie dotychczasowych asercji

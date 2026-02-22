@@ -1,4 +1,3 @@
-// ...existing code...
 #pragma once
 #ifdef UNIT_TEST
 #include <stdint.h>
@@ -9,10 +8,10 @@
 #include "RTClib.h"
 #endif
 
-class HourlySurplusForecastAlgorithm {
+class HourlySurplusAlgorithm {
 public:
 
-    HourlySurplusForecastAlgorithm(uint32_t windowSeconds = 180);
+    HourlySurplusAlgorithm(uint32_t windowSeconds = 180);
 
     // l1Wh, l2Wh, homeWh: energy (Wh) produced/consumed during the interval
     // Returns bool: true=heater ON, false=heater OFF (current state after call)
