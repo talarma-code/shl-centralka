@@ -30,21 +30,44 @@ public:
     void setup() override;        
     void loop() override;         
     void handlePacket(const MatterPacketWithMac &pkt) override;
+
+private:
+    static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
+
     MeasurementDataPacket generateRandomMeasurement();
     void setupSystemTime(); 
 
-    void measure();
+    enum state {
+        Idle,
+        Measurements,
+        HeaterControl,
+        HaNotification,
+        RtcSync,
+        HistoricalDataSync
+    };
 
-private:
     void logLastResetReason();
+    bool is23Pm();
+    void handleIdleState(ApplicationMessagePacket evt);
+    void handleMeasurementsState(ApplicationMessagePacket evt);
+    void handleHeaterControlState(ApplicationMessagePacket evt);
+    void handleHaNotificationState(ApplicationMessagePacket evt);
+    void handleRtcSyncState(ApplicationMessagePacket evt);
+    void handleHistoricalDataSyncState(ApplicationMessagePacket evt);
     void sendMeasurementToHa(const MeasurementDataPacket& data);
+
+    void sendRtcSyncCommand();
+
     uint32_t haQueueFullStreak = 0; 
-    static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
+    uint32_t rtcRetrayCount = 0;
+
+    
+    int last23PmYear = -1;
+    int last23PmDayOfYear = -1;
     EspNowTransport transport;
     HeaterEspNow heaterEspNow;
     HeaterFsm heaterFsm;
     PowerMeter powerMeter;
-    //ORWE504PowerMeter orwe504Meter;
     RtcDs3231 rtc;
 
     ActiveQueueRef<ApplicationMessagePacket> mainTaskQueue;
@@ -54,6 +77,10 @@ private:
 
     ORWE520PowerMeter orwe520PowerMeter;
     SDM120CTPowerMeter sdm120ctPowerMeter;
+
+    state _state = state::Idle;
+    static const uint32_t INTERVAL_3_MINUTES_MS = 180000; 
+    static const uint32_t INTERVAL_5_SECONDS_MS = 5000;
 
 
 };

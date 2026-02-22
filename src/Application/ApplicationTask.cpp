@@ -6,6 +6,7 @@
 #include "Log.h"
 #include <esp_system.h>
 #include <sys/time.h>
+#include <time.h>
 
 #define LED_PIN 2  // wbudowana dioda LED
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
@@ -35,7 +36,6 @@ void ApplicationTask::setup() {
     powerMeter.registerTransport(&transport);
 
     // Setup physical OR-WE-504 Modbus meter
-    //orwe504Meter.setup();
     orwe520PowerMeter.setup();
     sdm120ctPowerMeter.setup();
 
@@ -80,10 +80,59 @@ void ApplicationTask::setupSystemTime() {
     rtc.print(now);
 }
 
+bool ApplicationTask::is23Pm() {
+    time_t now = time(nullptr);
+    if (now == (time_t)-1) {
+        return false;
+    }
+
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+
+    if (timeinfo.tm_hour == 23 && timeinfo.tm_min < 3) {
+        if (last23PmYear != timeinfo.tm_year || last23PmDayOfYear != timeinfo.tm_yday) {
+            last23PmYear = timeinfo.tm_year;
+            last23PmDayOfYear = timeinfo.tm_yday;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ApplicationTask::loop() {
     ApplicationMessagePacket evt;
 
     if (mainTaskQueue.receive(evt, 100)) {
+        switch (_state)
+        {
+        case state::Idle:
+            handleIdleState(evt);
+            break;
+        case state::Measurements:
+            handleMeasurementsState(evt);
+            break;
+        case state::HeaterControl:
+            handleHeaterControlState(evt);
+            break;
+        case state::HaNotification:
+            handleHaNotificationState(evt);
+            break;
+        case state::RtcSync:
+            handleRtcSyncState(evt);
+            break;
+        case state::HistoricalDataSync:
+            handleHistoricalDataSyncState(evt);
+            break;
+        default:
+            break;
+        }
+
+
+
+
+
+
         switch (evt.type) {
             case ApplicationCommandType::Timer:
             {
@@ -137,7 +186,9 @@ void ApplicationTask::loop() {
                 break;
         }
     }
+
     
+    //This is only test code - will be removed 
     if (Serial.available() > 0) {
         char characterRecived = Serial.read();   // Odczytaj 1 bajt
 
@@ -164,7 +215,6 @@ void ApplicationTask::loop() {
         
         SystemDebuger::printSystemStats();
         delay(1000);
-
     }
 }
 
@@ -191,35 +241,6 @@ void ApplicationTask::handlePacket(const MatterPacketWithMac &pkt) {
     msg.payload.matterPacket = pkt;
     mainTaskQueue.sendFromISR(msg, nullptr);
 }
-
-
-void ApplicationTask::measure()
-{
-            //  const uint8_t slaveId = 1; // Modbus address of OR-WE-504
-
-            //     float voltage      = orwe504Meter.voltage(slaveId);
-            //     float current      = orwe504Meter.electricCurrent(slaveId);
-            //     float freq         = orwe504Meter.frequency(slaveId);
-            //     float pActive      = orwe504Meter.activePower(slaveId);
-            //     float pReactive    = orwe504Meter.reactivePower(slaveId);
-            //     float pApparent    = orwe504Meter.apparentPower(slaveId);
-            //     float powerFactor  = orwe504Meter.powerFactor(slaveId);
-            //     float energyActive = orwe504Meter.totalActivePower(slaveId);
-
-            //     Serial.println("[OR-WE-504] Measurements:");
-            //     Serial.print("  Voltage [V]:         "); Serial.println(voltage, 2);
-            //     Serial.print("  Current [A]:         "); Serial.println(current, 3);
-            //     Serial.print("  Frequency [Hz]:      "); Serial.println(freq, 2);
-            //     Serial.print("  Active Power [W]:    "); Serial.println(pActive, 2);
-            //     Serial.print("  Reactive Power [var]:"); Serial.println(pReactive, 2);
-            //     Serial.print("  Apparent Power [VA]: "); Serial.println(pApparent, 2);
-            //     Serial.print("  Power factor [-]:    "); Serial.println(powerFactor, 3);
-            //     Serial.print("  Active energy [kWh]: "); Serial.println(energyActive, 3);
-
-            //     // Opcjonalnie: restart timera, aby cyklicznie odświeżać pomiary
-            //     timer.start(5000);
-}
-
 
 // Złoty środek (praktyka)
 // Typowy, sprawdzony układ:
@@ -255,4 +276,68 @@ MeasurementDataPacket ApplicationTask::generateRandomMeasurement() {
     m.measurementType = MeasurementDataType::Now;
 
     return m;
+}
+
+void ApplicationTask::handleIdleState(ApplicationMessagePacket evt) {
+    if (evt.type == ApplicationCommandType::Timer) {
+        if (is23Pm()) {
+            sendRtcSyncCommand();
+            _state = state::RtcSync;
+            timer.start(INTERVAL_5_SECONDS_MS); 
+            LOG_INFO("Transitioning to RtcSync state");
+        } else {
+            _state = state::Measurements;
+            timer.start(200); 
+            LOG_INFO("Transitioning to Measurements state");
+        }
+    }
+}
+
+void ApplicationTask::sendRtcSyncCommand() {
+    SystemMessagePacket drMsg;
+    drMsg.type = SystemDataType::RtcSync;
+    haQueueRef.send(drMsg);
+}
+
+void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
+    
+
+}
+
+void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
+    (void)evt;
+}
+
+void ApplicationTask::handleHaNotificationState(ApplicationMessagePacket evt) {
+    (void)evt;
+}
+
+void ApplicationTask::handleRtcSyncState(ApplicationMessagePacket evt) {
+
+    if (evt.type == ApplicationCommandType::Timer) {
+        rtcRetrayCount++;
+        if (rtcRetrayCount > 3) {
+            LOG_ERROR("RTC sync retry limit reached, try next day");
+            rtcRetrayCount = 0;
+            _state = state::Idle;
+            timer.start(INTERVAL_3_MINUTES_MS);
+        } else {
+            LOG_INFO("RTC sync retry #%u", rtcRetrayCount);
+            sendRtcSyncCommand();
+            timer.start(INTERVAL_5_SECONDS_MS); 
+        }
+    }
+
+    if (evt.type == ApplicationCommandType::RtcSync) {
+        uint32_t epochTime = evt.payload.rtcSyncCommandPacket.epochTime;
+        DateTime dt(epochTime);
+        rtc.set(dt);
+        LOG_INFO("RTC synchronized to epoch time: %u", epochTime);
+        _state = state::Idle;       //we don't have to run timer, itis already runing
+    }
+    
+}
+
+void ApplicationTask::handleHistoricalDataSyncState(ApplicationMessagePacket evt) {
+    (void)evt;
 }
