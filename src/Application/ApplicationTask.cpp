@@ -4,6 +4,7 @@
 #include "SystemDebuger.h"
 #include "ActiveQueueRef.h"
 #include "Log.h"
+#include "Measurements.h"
 #include <esp_system.h>
 #include <sys/time.h>
 #include <time.h>
@@ -35,14 +36,11 @@ void ApplicationTask::setup() {
     heaterEspNow.registerTransport(&transport);
     powerMeter.registerTransport(&transport);
 
-    // Setup physical OR-WE-504 Modbus meter
-    orwe520PowerMeter.setup();
-    sdm120ctPowerMeter.setup();
-
-    timer.start(25000);
     rtc.setup();
     setupSystemTime();
+    powerMeterFsm.setup();
 
+    timer.start(25000);
 }
 
 void ApplicationTask::logLastResetReason() {
@@ -134,33 +132,33 @@ void ApplicationTask::loop() {
 
 
         switch (evt.type) {
-            case ApplicationCommandType::Timer:
-            {
-                MeasurementDataPacket data = generateRandomMeasurement();
-                //Serial.println("Sent power measurement request");
-                sendMeasurementToHa(data);
+            // case ApplicationCommandType::Timer:
+            // {
+            //     MeasurementDataPacket data = generateRandomMeasurement();
+            //     //Serial.println("Sent power measurement request");
+            //     sendMeasurementToHa(data);
 
-                orwe520PowerMeter.update(); // Update pulse count and power calculation 
-                Serial.println("--------------------------------------------");
-                Serial.print("ORWE520 Current Power [kW]: ");
-                Serial.println(orwe520PowerMeter.currentPowerKW());
-                Serial.print("ORWE520 Total Energy [kWh]: ");
-                Serial.println(orwe520PowerMeter.totalEnergyKWh());
-                Serial.print("ORWE520 Total Pulses: ");
-                Serial.println(orwe520PowerMeter.totalPulses());
+            //     orwe520PowerMeter.update(); // Update pulse count and power calculation 
+            //     Serial.println("--------------------------------------------");
+            //     Serial.print("ORWE520 Current Power [kW]: ");
+            //     Serial.println(orwe520PowerMeter.currentPowerKW());
+            //     Serial.print("ORWE520 Total Energy [kWh]: ");
+            //     Serial.println(orwe520PowerMeter.totalEnergyKWh());
+            //     Serial.print("ORWE520 Total Pulses: ");
+            //     Serial.println(orwe520PowerMeter.totalPulses());
 
-                Serial.println("======================================");
-                Serial.print("SDM120CT Voltage [V]: ");
-                Serial.println(sdm120ctPowerMeter.voltage(1));
+            //     Serial.println("======================================");
+            //     Serial.print("SDM120CT Voltage [V]: ");
+            //     Serial.println(sdm120ctPowerMeter.voltage(1));
 
-                SystemMessagePacket drMsg;
+            //     SystemMessagePacket drMsg;
 
-                drMsg.type = SystemDataType::Measurements;
-                drMsg.payload.measurementData = data;
-                dataRecorderQueueRef.send(drMsg);
-                timer.start(5000); // restart timer
-                break;
-            }
+            //     drMsg.type = SystemDataType::Measurements;
+            //     drMsg.payload.measurementData = data;
+            //     dataRecorderQueueRef.send(drMsg);
+            //     timer.start(5000); // restart timer
+            //     break;
+            // }
 
             case ApplicationCommandType::MatterPacket: {
                 auto res = heaterFsm.step(evt.payload.matterPacket);
@@ -251,9 +249,6 @@ void ApplicationTask::handlePacket(const MatterPacketWithMac &pkt) {
 // Idle	0	system
 
 
-// char buffer[32];
-// DateTime(unixTime).toString(buffer, "YYYY-MM-DD hh:mm:ss");
-
 MeasurementDataPacket ApplicationTask::generateRandomMeasurement() {
     static bool seeded = false;
     if (!seeded) {
@@ -300,12 +295,46 @@ void ApplicationTask::sendRtcSyncCommand() {
 }
 
 void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
-    
-
+    if (evt.type == ApplicationCommandType::Timer) {
+        MeasurementData data;
+        auto measurmentStatus = powerMeterFsm.messurementReady(data);
+        if (measurmentStatus == PowerMeterFsm::Status::MesurmentOk) {    
+            bool heaterStatus = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
+             collectDataForHaNotification(data, heaterStatus);
+            if (heaterRequestedState != heaterStatus) {
+                heaterRequestedState = heaterStatus;
+                _state = state::HeaterControl;
+            }
+            else {
+                _state = state::HaNotification;
+            }
+            timer.start(INTERVAL_100_MS);
+        }
+        else if (measurmentStatus == PowerMeterFsm::Status::RetryMesurment) {
+            LOG_INFO("Power measurement failed, retrying...");
+            timer.start(INTERVAL_2_SECONDS_MS); 
+        } else {
+            //todo: add some notification to HA 
+            //add power reset for heater 
+            LOG_ERROR("Power measurement error, skipping this cycle");
+            _state = state::Idle;
+             timer.start(INTERVAL_3_MINUTES_MS); 
+        }   
+    }
 }
 
 void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
-    (void)evt;
+    if (evt.type == ApplicationCommandType::Timer) {
+        if (heaterRequestedState) {
+            heaterEspNow.turnOn();
+            LOG_INFO("Heater turned ON");
+        } else {
+            heaterEspNow.turnOff();
+            LOG_INFO("Heater turned OFF");
+        }
+        _state = state::HaNotification;
+        timer.start(INTERVAL_100_MS); 
+    }
 }
 
 void ApplicationTask::handleHaNotificationState(ApplicationMessagePacket evt) {
@@ -313,7 +342,6 @@ void ApplicationTask::handleHaNotificationState(ApplicationMessagePacket evt) {
 }
 
 void ApplicationTask::handleRtcSyncState(ApplicationMessagePacket evt) {
-
     if (evt.type == ApplicationCommandType::Timer) {
         rtcRetrayCount++;
         if (rtcRetrayCount > 3) {
@@ -330,14 +358,48 @@ void ApplicationTask::handleRtcSyncState(ApplicationMessagePacket evt) {
 
     if (evt.type == ApplicationCommandType::RtcSync) {
         uint32_t epochTime = evt.payload.rtcSyncCommandPacket.epochTime;
-        DateTime dt(epochTime);
-        rtc.set(dt);
-        LOG_INFO("RTC synchronized to epoch time: %u", epochTime);
+        updateSystemTime(epochTime);
+        updateRtcTime(epochTime);
+
+        LOG_INFO("RTC synchronized to epoch time: %u (system time updated)", epochTime);
         _state = state::Idle;       //we don't have to run timer, itis already runing
     }
-    
 }
 
 void ApplicationTask::handleHistoricalDataSyncState(ApplicationMessagePacket evt) {
     (void)evt;
 }
+
+
+void ApplicationTask::updateSystemTime(uint32_t epochTime) {
+    time_t epoch = static_cast<time_t>(epochTime);
+    struct timeval tv;
+    tv.tv_sec = epoch;
+    tv.tv_usec = 0;
+    settimeofday(&tv, nullptr);
+}
+
+void ApplicationTask::updateRtcTime(uint32_t epochTime) {
+    DateTime dt(epochTime);
+    rtc.set(dt);
+}
+
+DateTime ApplicationTask::getSystemDateTime() {
+    time_t now = time(nullptr);
+    if (now == (time_t)-1) {
+        return DateTime(static_cast<uint32_t>(0));
+    }
+
+    return DateTime(static_cast<uint32_t>(now));
+}
+
+void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, bool heaterStatus) {
+    lastMeasurementData.timestamp = (uint32_t)(millis() / 1000UL);
+    lastMeasurementData.L1Power = data.L1Power;
+    lastMeasurementData.L2Power = data.L2Power; 
+    lastMeasurementData.HomeTotalPower = data.HomePower;
+    lastMeasurementData.L1Voltage_x10 = data.L1Voltage_x10; 
+    lastMeasurementData.L2Voltage_x10 = data.L2Voltage_x10;
+    lastMeasurementData.heaterRequestedStatus = heaterStatus ? HeaterStatus::On : HeaterStatus::Off;
+    lastMeasurementData.measurementType = MeasurementDataType::Now;
+}   

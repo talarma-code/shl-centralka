@@ -33,7 +33,7 @@ private:
     bool heaterOnState;
     uint32_t windowSeconds;
 
-    static constexpr double heaterPowerWhPerHour = 1500.0; // 1.5 kW = 1500 Wh per hour
+    static constexpr double heaterPowerWhPerHour = 1500.0; // 1.5 kW = 1500 Wh per hour 75W per 3 minute interval
     static constexpr double toggleMarginWh = 10.0; // 10 Wh margin
 
 };

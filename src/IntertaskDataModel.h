@@ -20,6 +20,12 @@ enum class MeasurementDataType : uint8_t {
     Historical = 1
 };
 
+enum class HeaterStatus : uint8_t {
+    Off = 0,
+    On = 1
+};
+
+
 struct TimerDataPacket {
     uint32_t timerId;
 };
@@ -41,6 +47,8 @@ struct MeasurementDataPacket {
     uint16_t L2Voltage_x10;
 
     uint16_t HeaterEnableForSeconds;
+    HeaterStatus heaterRequestedStatus;
+
     MeasurementDataType measurementType;
 };
 

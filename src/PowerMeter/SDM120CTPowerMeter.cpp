@@ -60,184 +60,210 @@ void SDM120CTPowerMeter::debugPrintRequest(uint8_t slave, uint8_t func, uint16_t
     Serial.println();
 }
 
-float SDM120CTPowerMeter::voltage(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::voltage(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_VOLTAGE, 2);
     result = node.readInputRegisters(SDM120_VOLTAGE, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::electricCurrent(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::electricCurrent(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_ELECTRIC_CURRENT, 2);
     result = node.readInputRegisters(SDM120_ELECTRIC_CURRENT, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::activePower(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::activePower(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_ACTIVE_POWER, 2);
     result = node.readInputRegisters(SDM120_ACTIVE_POWER, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::apparentPower(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::apparentPower(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_APPARENT_POWER, 2);
     result = node.readInputRegisters(SDM120_APPARENT_POWER, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::reactivePower(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::reactivePower(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_REACTIVE_POWER, 2);
     result = node.readInputRegisters(SDM120_REACTIVE_POWER, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::powerFactor(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::powerFactor(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_POWER_FACTOR, 2);
     result = node.readInputRegisters(SDM120_POWER_FACTOR, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::frequency(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::frequency(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_FREQUENCY, 2);
     result = node.readInputRegisters(SDM120_FREQUENCY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::importActiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::importActiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_IMPORT_ACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_IMPORT_ACTIVE_ENERGY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::exportActiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::exportActiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_EXPORT_ACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_EXPORT_ACTIVE_ENERGY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::importReactiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::importReactiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_IMPORT_REACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_IMPORT_REACTIVE_ENERGY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::exportReactiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::exportReactiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_EXPORT_REACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_EXPORT_REACTIVE_ENERGY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::totalActiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::totalActiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_TOTAL_ACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_TOTAL_ACTIVE_ENERGY, 2); // 2 registers = 4 bytes
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 
-float SDM120CTPowerMeter::totalReactiveEnergy(uint8_t slaveId) {
+SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::totalReactiveEnergy(float &value, uint8_t slaveId) {
     node.begin(slaveId, Serial1);
     uint8_t result;
     debugPrintRequest(slaveId, 0x04, SDM120_TOTAL_REACTIVE_ENERGY, 2);
     result = node.readInputRegisters(SDM120_TOTAL_REACTIVE_ENERGY, 2); // 2 registers = 4 bytes
 
     if (result == node.ku8MBSuccess) {
-        return getFloatValue();
+        value = getFloatValue();
+        return ReadStatus::Ok;
     } else {
         modbusError(result);
-        return 0;
+        value = 0.0f;
+        return ReadStatus::Error;
     }
 }
 

@@ -4,14 +4,13 @@
 #include "ActiveTask.h"
 #include "HeaterEspNow.h"
 #include "PowerMeter.h"
-//#include "ORWE504PowerMeter.h"
 #include "ActivePoolRef.h"
 #include "SystemTimer.h"
 #include "IntertaskDataModel.h"
 #include "RtcDs3231.h"
 #include "HeaterFsm.h"
-#include "ORWE520PowerMeter.h"
-#include "SDM120CTPowerMeter.h"
+#include "PowerMeterFsm.h"
+#include "HourlySurplusAlgorithm.h"
 
 class TimerToApplicationMessage {
     public:
@@ -22,7 +21,6 @@ class TimerToApplicationMessage {
         return m;
     }
 };
-
 
 class ApplicationTask : public IMatterReceiver, public ActiveTask {
 public:
@@ -46,8 +44,7 @@ private:
         HistoricalDataSync
     };
 
-    void logLastResetReason();
-    bool is23Pm();
+    //methods to handle each state
     void handleIdleState(ApplicationMessagePacket evt);
     void handleMeasurementsState(ApplicationMessagePacket evt);
     void handleHeaterControlState(ApplicationMessagePacket evt);
@@ -56,10 +53,20 @@ private:
     void handleHistoricalDataSyncState(ApplicationMessagePacket evt);
     void sendMeasurementToHa(const MeasurementDataPacket& data);
 
+    // Helper methods
+    void logLastResetReason();
+    bool is23Pm();
     void sendRtcSyncCommand();
+    void updateSystemTime(uint32_t epochTime);
+    void updateRtcTime(uint32_t epochTime);
+    DateTime getSystemDateTime();
+    void collectDataForHaNotification(const MeasurementData& data, bool heaterStatus);
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;
+    bool heaterRequestedState = false;
+    MeasurementDataPacket lastMeasurementData{};
+    
 
     
     int last23PmYear = -1;
@@ -68,19 +75,24 @@ private:
     HeaterEspNow heaterEspNow;
     HeaterFsm heaterFsm;
     PowerMeter powerMeter;
-    RtcDs3231 rtc;
 
+
+    HourlySurplusAlgorithm hourlySurplusAlgorithm;
+    PowerMeterFsm powerMeterFsm;
+    RtcDs3231 rtc;
     ActiveQueueRef<ApplicationMessagePacket> mainTaskQueue;
     ActiveQueueRef<SystemMessagePacket> haQueueRef;
     ActiveQueueRef<SystemMessagePacket> dataRecorderQueueRef;
     SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage> timer;
 
-    ORWE520PowerMeter orwe520PowerMeter;
-    SDM120CTPowerMeter sdm120ctPowerMeter;
+    // ORWE520PowerMeter orwe520PowerMeter;
+    // SDM120CTPowerMeter sdm120ctPowerMeter;
 
     state _state = state::Idle;
     static const uint32_t INTERVAL_3_MINUTES_MS = 180000; 
     static const uint32_t INTERVAL_5_SECONDS_MS = 5000;
+    static const uint32_t INTERVAL_2_SECONDS_MS = 2000;
+    static const uint32_t INTERVAL_100_MS = 100;
 
 
 };

@@ -5,20 +5,25 @@
 
 class SDM120CTPowerMeter {
 public:
+    enum class ReadStatus : uint8_t {
+        Ok,
+        Error
+    };
+
     void setup();
-    float voltage(uint8_t slaveId = 1);
-    float electricCurrent(uint8_t slaveId = 1);
-    float activePower(uint8_t slaveId = 1);
-    float apparentPower(uint8_t slaveId = 1);
-    float reactivePower(uint8_t slaveId = 1);
-    float powerFactor(uint8_t slaveId = 1);
-    float frequency(uint8_t slaveId = 1);
-    float importActiveEnergy(uint8_t slaveId = 1);
-    float exportActiveEnergy(uint8_t slaveId = 1);
-    float importReactiveEnergy(uint8_t slaveId = 1);
-    float exportReactiveEnergy(uint8_t slaveId = 1);
-    float totalActiveEnergy(uint8_t slaveId = 1);
-    float totalReactiveEnergy(uint8_t slaveId = 1);
+    ReadStatus voltage(float &value, uint8_t slaveId = 1);
+    ReadStatus electricCurrent(float &value, uint8_t slaveId = 1);
+    ReadStatus activePower(float &value, uint8_t slaveId = 1);
+    ReadStatus apparentPower(float &value, uint8_t slaveId = 1);
+    ReadStatus reactivePower(float &value, uint8_t slaveId = 1);
+    ReadStatus powerFactor(float &value, uint8_t slaveId = 1);
+    ReadStatus frequency(float &value, uint8_t slaveId = 1);
+    ReadStatus importActiveEnergy(float &value, uint8_t slaveId = 1);
+    ReadStatus exportActiveEnergy(float &value, uint8_t slaveId = 1);
+    ReadStatus importReactiveEnergy(float &value, uint8_t slaveId = 1);
+    ReadStatus exportReactiveEnergy(float &value, uint8_t slaveId = 1);
+    ReadStatus totalActiveEnergy(float &value, uint8_t slaveId = 1);
+    ReadStatus totalReactiveEnergy(float &value, uint8_t slaveId = 1);
 
 private:
     ModbusMaster node;
