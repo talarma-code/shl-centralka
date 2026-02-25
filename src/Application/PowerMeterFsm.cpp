@@ -1,4 +1,5 @@
 #include "PowerMeterFsm.h"  
+#include "GlobalTypes.h"
 
 #define L1_POWER_METER_MODBUS_ID 1
 #define L2_POWER_METER_MODBUS_ID 2
@@ -10,27 +11,71 @@ void PowerMeterFsm::setup() {
     sdm120ctPowerMeter.setup();
 }
 
-PowerMeterFsm::Status PowerMeterFsm::messurementReady(MeasurementData &data) {
+PowerMeterFsm::Result PowerMeterFsm::messurementReady(MeasurementData &data) {
+    switch (_state)
+    {
+    case MesurmentState::Mesurment:
+        return measurmentState(data);
+    
+    case MesurmentState::Restarting:
+        return restartingState();
+    
+    default:
+        return {Next::Error, 0};
+    }
+
+}
+ 
+PowerMeterFsm::Result PowerMeterFsm::measurmentState(MeasurementData &data) {
     float l1Energy, l2Energy, homeTotalEnergy;
     if (getPowerData(l1Energy, l2Energy, homeTotalEnergy)) {
         calculateTotalAndPeriondPowerData(l1Energy, l2Energy, homeTotalEnergy, data);
         getVoltage(data);
-        _retryCounter = 0; // reset retry counter on successful measurement 
-        return Status::MesurmentOk;
+        resetCounters();
+        return {Next::NextState, INTERVAL_100_MS};
 
     } else {
         _retryCounter++;
         if (_retryCounter > 3) {
-            _retryCounter = 0;
-            return Status::Error;
+
+            if (_l1ReadErrorCount > 0) {
+                resetL1PowerOff();
+            } else if (_l2ReadErrorCount > 0) {
+                resetL2PowerOff();
+            }
+            resetCounters();    
+            _state = MesurmentState::Restarting;    
+            return {Next::Stay, INTERVAL_5_SECONDS_MS};
         }
-        return Status::RetryMesurment;
+        return {Next::Stay, INTERVAL_5_SECONDS_MS};
     }
+}
+
+PowerMeterFsm::Result PowerMeterFsm::restartingState() {
+    // This function can be used to implement any state-specific logic if needed
+    resetL1PowerOn();
+    resetL2PowerOn();
+    _resetCounter++;
+    if (_resetCounter > 3) {
+        _resetCounter = 0;
+        _state = MesurmentState::Mesurment;
+        return {Next::Error, INTERVAL_100_MS};
+    }
+    _state = MesurmentState::Mesurment;   
+    return {Next::Stay, INTERVAL_30_SECONDS_MS};
 }
 
 bool PowerMeterFsm::getPowerData(float& l1Energy, float& l2Energy, float& homeTotalEnergy) {
     auto statusL1 = sdm120ctPowerMeter.importActiveEnergy(l1Energy, L1_POWER_METER_MODBUS_ID);
     auto statusL2 = sdm120ctPowerMeter.importActiveEnergy(l2Energy, L2_POWER_METER_MODBUS_ID);
+
+    if (statusL1 != SDM120CTPowerMeter::ReadStatus::Ok) {
+        _l1ReadErrorCount++;
+    }
+
+    if (statusL2 != SDM120CTPowerMeter::ReadStatus::Ok) {
+        _l2ReadErrorCount++;
+    }
 
     if (statusL1 != SDM120CTPowerMeter::ReadStatus::Ok ||
         statusL2 != SDM120CTPowerMeter::ReadStatus::Ok) {
@@ -41,6 +86,22 @@ bool PowerMeterFsm::getPowerData(float& l1Energy, float& l2Energy, float& homeTo
     l1Energy = static_cast<uint32_t>(l1Energy);
     l2Energy = static_cast<uint32_t>(l2Energy);
     return true;
+}
+
+void PowerMeterFsm::resetL1PowerOn() {
+    // TODO: implement L1 power ON action
+}
+
+void PowerMeterFsm::resetL1PowerOff() {
+    // TODO: implement L1 power OFF action
+}
+
+void PowerMeterFsm::resetL2PowerOn() {
+    // TODO: implement L2 power ON action
+}
+
+void PowerMeterFsm::resetL2PowerOff() {
+    // TODO: implement L2 power OFF action
 }
 
 void PowerMeterFsm::getVoltage(MeasurementData &data) {
@@ -70,5 +131,12 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(float l1Energy, float l2En
     data.L1TotalPower = _l1TotalPower;
     data.L2TotalPower = _l2TotalPower;  
     data.HomeTotalPower = _homeTotalPower;
+}
+
+
+void PowerMeterFsm::resetCounters() {
+    _retryCounter = 0;
+    _l1ReadErrorCount = 0;
+    _l2ReadErrorCount = 0;
 }
 

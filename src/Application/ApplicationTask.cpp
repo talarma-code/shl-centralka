@@ -1,13 +1,19 @@
-#include "ApplicationTask.h"
+
+
+#include <esp_system.h>
+#include <sys/time.h>
+#include <time.h>
 #include <Arduino.h>
+
+#include "ApplicationTask.h"
+#include "GlobalTypes.h"
+
 #include "MatterLikeDebugger.h"
 #include "SystemDebuger.h"
 #include "ActiveQueueRef.h"
 #include "Log.h"
 #include "Measurements.h"
-#include <esp_system.h>
-#include <sys/time.h>
-#include <time.h>
+
 
 #define LED_PIN 2  // wbudowana dioda LED
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
@@ -125,64 +131,6 @@ void ApplicationTask::loop() {
         default:
             break;
         }
-
-
-
-
-
-
-        switch (evt.type) {
-            // case ApplicationCommandType::Timer:
-            // {
-            //     MeasurementDataPacket data = generateRandomMeasurement();
-            //     //Serial.println("Sent power measurement request");
-            //     sendMeasurementToHa(data);
-
-            //     orwe520PowerMeter.update(); // Update pulse count and power calculation 
-            //     Serial.println("--------------------------------------------");
-            //     Serial.print("ORWE520 Current Power [kW]: ");
-            //     Serial.println(orwe520PowerMeter.currentPowerKW());
-            //     Serial.print("ORWE520 Total Energy [kWh]: ");
-            //     Serial.println(orwe520PowerMeter.totalEnergyKWh());
-            //     Serial.print("ORWE520 Total Pulses: ");
-            //     Serial.println(orwe520PowerMeter.totalPulses());
-
-            //     Serial.println("======================================");
-            //     Serial.print("SDM120CT Voltage [V]: ");
-            //     Serial.println(sdm120ctPowerMeter.voltage(1));
-
-            //     SystemMessagePacket drMsg;
-
-            //     drMsg.type = SystemDataType::Measurements;
-            //     drMsg.payload.measurementData = data;
-            //     dataRecorderQueueRef.send(drMsg);
-            //     timer.start(5000); // restart timer
-            //     break;
-            // }
-
-            case ApplicationCommandType::MatterPacket: {
-                auto res = heaterFsm.step(evt.payload.matterPacket);
-                if (res.hasCommand) {
-                    // For now we just have the HeaterCommandPacket ready
-                    // for future processing or forwarding.
-                    HeaterCommandPacket cmd = res.command;
-                    (void)cmd; // suppress unused warning until used
-                }
-                break;
-            }
-            
-            case ApplicationCommandType::RtcSync: {
-                uint32_t epochTime = evt.payload.rtcSyncCommandPacket.epochTime;
-                DateTime dt(epochTime);
-                rtc.set(dt);
-                Serial.print("RTC synchronized to epoch time: ");
-                rtc.print(dt);
-                break;
-            }
-            default:
-                Serial.println("Unknown timer event");
-                break;
-        }
     }
 
     
@@ -294,36 +242,32 @@ void ApplicationTask::sendRtcSyncCommand() {
     haQueueRef.send(drMsg);
 }
 
+//todo: do rozwazenia praca w trybie czesciowego pomiaru, jak tylko jeden licznik dziala.
+// mozna dodac jakis status zeby to bylo widoczne na HA 
 void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
     if (evt.type == ApplicationCommandType::Timer) {
         MeasurementData data;
         auto measurmentStatus = powerMeterFsm.messurementReady(data);
-        if (measurmentStatus == PowerMeterFsm::Status::MesurmentOk) {    
-            bool heaterStatus = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
-             collectDataForHaNotification(data, heaterStatus);
-            if (heaterRequestedState != heaterStatus) {
-                heaterRequestedState = heaterStatus;
-                _state = state::HeaterControl;
-            }
-            else {
-                _state = state::HaNotification;
-            }
-            timer.start(INTERVAL_100_MS);
-        }
-        else if (measurmentStatus == PowerMeterFsm::Status::RetryMesurment) {
-            LOG_INFO("Power measurement failed, retrying...");
-            timer.start(INTERVAL_2_SECONDS_MS); 
-        } else {
-            //todo: add some notification to HA 
-            //add power reset for heater 
-            LOG_ERROR("Power measurement error, skipping this cycle");
-            _state = state::Idle;
-             timer.start(INTERVAL_3_MINUTES_MS); 
-        }   
-    }
+        switch (measurmentStatus.next)
+        {
+            case PowerMeterFsm::Next::NextState: 
+                calculateHeaterStatus(data);
+                break;
+            case PowerMeterFsm::Next::Stay:
+                _state = state::Measurements;
+                break;
+            case PowerMeterFsm::Next::Error:
+                haPowerMetersErrorNotification();
+                heaterRequestedState = false; // turn off heater if we have error with power meters
+                _state = state::HeaterControl;  
+                break;
+        }     
+        timer.start(measurmentStatus.delayMs);
+    }       
 }
 
 void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
+   //todo: add implementatio here 
     if (evt.type == ApplicationCommandType::Timer) {
         if (heaterRequestedState) {
             heaterEspNow.turnOn();
@@ -338,7 +282,11 @@ void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
 }
 
 void ApplicationTask::handleHaNotificationState(ApplicationMessagePacket evt) {
-    (void)evt;
+    if (evt.type == ApplicationCommandType::Timer) {
+        sendMeasurementToHa(lastMeasurementData);
+        _state = state::Idle;
+        timer.start(INTERVAL_3_MINUTES_MS); 
+    }
 }
 
 void ApplicationTask::handleRtcSyncState(ApplicationMessagePacket evt) {
@@ -403,3 +351,20 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
     lastMeasurementData.heaterRequestedStatus = heaterStatus ? HeaterStatus::On : HeaterStatus::Off;
     lastMeasurementData.measurementType = MeasurementDataType::Now;
 }   
+
+void ApplicationTask::calculateHeaterStatus(const MeasurementData& data) {
+    bool heaterStatusBasedOnCalculation = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
+    collectDataForHaNotification(data, heaterStatusBasedOnCalculation);
+    if (heaterRequestedState != heaterStatusBasedOnCalculation) {
+        heaterRequestedState = heaterStatusBasedOnCalculation;
+        _state = state::HeaterControl;
+    }
+    else {
+        _state = state::HaNotification;
+    }
+}
+
+void ApplicationTask::haPowerMetersErrorNotification() {
+    //todo - implement error notification to HA, maybe with retry mechanism
+    LOG_ERROR("Power meter measurement failed after retries, notifying HA");
+}

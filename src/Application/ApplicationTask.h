@@ -61,13 +61,13 @@ private:
     void updateRtcTime(uint32_t epochTime);
     DateTime getSystemDateTime();
     void collectDataForHaNotification(const MeasurementData& data, bool heaterStatus);
+    void calculateHeaterStatus(const MeasurementData& data);
+    void haPowerMetersErrorNotification();
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;
     bool heaterRequestedState = false;
     MeasurementDataPacket lastMeasurementData{};
-    
-
     
     int last23PmYear = -1;
     int last23PmDayOfYear = -1;
@@ -85,14 +85,5 @@ private:
     ActiveQueueRef<SystemMessagePacket> dataRecorderQueueRef;
     SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage> timer;
 
-    // ORWE520PowerMeter orwe520PowerMeter;
-    // SDM120CTPowerMeter sdm120ctPowerMeter;
-
     state _state = state::Idle;
-    static const uint32_t INTERVAL_3_MINUTES_MS = 180000; 
-    static const uint32_t INTERVAL_5_SECONDS_MS = 5000;
-    static const uint32_t INTERVAL_2_SECONDS_MS = 2000;
-    static const uint32_t INTERVAL_100_MS = 100;
-
-
 };
