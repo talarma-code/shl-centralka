@@ -21,14 +21,36 @@ static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; /
 
 ApplicationTask::ApplicationTask(QueueHandle_t mainTaskQueueHandle, QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : 
     ActiveTask("application", 8192, 1),
-    heaterEspNow(LED_PIN), 
-    heaterFsm(heaterEspNow),
+    heaterDevice(LED_PIN), 
+    heaterFsm(heaterDevice),
     mainTaskQueue(mainTaskQueueHandle),
     haQueueRef(haQueueHandle),
     dataRecorderQueueRef(dataRecorderQueueHandle),
     timer(APPLICATION_SYSTEM_TIMER_ID, 5000, SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage>::Mode::OneShot, ActiveQueueRef<ApplicationMessagePacket>(mainTaskQueue.nativeHandle()), TimerToApplicationMessage())
 {
 
+}
+
+const char* ApplicationTask::stateToString(state s) {
+    switch (s) {
+        case state::Idle: return "Idle";
+        case state::Measurements: return "Measurements";
+        case state::HeaterControl: return "HeaterControl";
+        case state::HaNotification: return "HaNotification";
+        case state::RtcSync: return "RtcSync";
+        case state::HistoricalDataSync: return "HistoricalDataSync";
+        default: return "Unknown";
+    }
+}
+
+const char* ApplicationTask::commandTypeToString(ApplicationCommandType type) {
+    switch (type) {
+        case ApplicationCommandType::Timer: return "Timer";
+        case ApplicationCommandType::MatterPacket: return "MatterPacket";
+        case ApplicationCommandType::HeaterCommand: return "HeaterCommand";
+        case ApplicationCommandType::RtcSync: return "RtcSync";
+        default: return "Unknown";
+    }
 }
 
 void ApplicationTask::setup() {
@@ -39,8 +61,7 @@ void ApplicationTask::setup() {
     
     transport.begin(MAC_CENTRALKA, MAC_LOCAL_HEATER);
     transport.onPacketReceived(this);
-    heaterEspNow.registerTransport(&transport);
-    powerMeter.registerTransport(&transport);
+    heaterDevice.registerTransport(&transport);
 
     rtc.setup();
     setupSystemTime();
@@ -108,6 +129,7 @@ void ApplicationTask::loop() {
     ApplicationMessagePacket evt;
 
     if (mainTaskQueue.receive(evt, 100)) {
+        LOG_DEBUG("App loop state=%s msg=%s", stateToString(_state), commandTypeToString(evt.type));
         switch (_state)
         {
         case state::Idle:
@@ -140,17 +162,17 @@ void ApplicationTask::loop() {
 
         if (characterRecived == 'o') {
             Serial.println("odebralem i wyslam ramke On");
-            heaterEspNow.turnOn();
+            heaterDevice.turnOn();
         }
 
         if (characterRecived == 'f') {
             Serial.println("odebralem i wyslam ramke Off");
-            heaterEspNow.turnOff();
+            heaterDevice.turnOff();
             //action Off
         }
         if (characterRecived == 'v') {
             Serial.println("odebralem i wyslam ramke v");
-            powerMeter.voltage(1);
+            heaterDevice.voltage(1);
             //action Off
         }
         if (characterRecived == 'r') {
@@ -267,17 +289,21 @@ void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
 }
 
 void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
-   //todo: add implementatio here 
-    if (evt.type == ApplicationCommandType::Timer) {
-        if (heaterRequestedState) {
-            heaterEspNow.turnOn();
-            LOG_INFO("Heater turned ON");
-        } else {
-            heaterEspNow.turnOff();
-            LOG_INFO("Heater turned OFF");
-        }
-        _state = state::HaNotification;
-        timer.start(INTERVAL_100_MS); 
+    auto res = heaterFsm.step(evt);
+    switch (res.next) {
+        case HeaterFsm::Next::Acked:
+            LOG_INFO("Heater action acknowledged");
+            _state = state::HaNotification;
+            timer.start(INTERVAL_100_MS);
+            break;
+        case HeaterFsm::Next::Stay:
+            timer.start(res.delayMs);
+            break;
+        case HeaterFsm::Next::Error:
+            LOG_ERROR("Heater action not acknowledged");
+            _state = state::HaNotification;
+            timer.start(INTERVAL_100_MS);
+            break;
     }
 }
 
@@ -357,6 +383,7 @@ void ApplicationTask::calculateHeaterStatus(const MeasurementData& data) {
     collectDataForHaNotification(data, heaterStatusBasedOnCalculation);
     if (heaterRequestedState != heaterStatusBasedOnCalculation) {
         heaterRequestedState = heaterStatusBasedOnCalculation;
+        heaterFsm.startCommand(heaterRequestedState);
         _state = state::HeaterControl;
     }
     else {

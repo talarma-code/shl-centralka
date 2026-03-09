@@ -2,8 +2,7 @@
 #include "EspNowTransport.h"
 #include "IMatterReceiver.h"
 #include "ActiveTask.h"
-#include "HeaterEspNow.h"
-#include "PowerMeter.h"
+#include "HeaterWithPowerMeter.h"
 #include "ActivePoolRef.h"
 #include "SystemTimer.h"
 #include "IntertaskDataModel.h"
@@ -63,6 +62,8 @@ private:
     void collectDataForHaNotification(const MeasurementData& data, bool heaterStatus);
     void calculateHeaterStatus(const MeasurementData& data);
     void haPowerMetersErrorNotification();
+    static const char* stateToString(state s);
+    static const char* commandTypeToString(ApplicationCommandType type);
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;
@@ -72,9 +73,8 @@ private:
     int last23PmYear = -1;
     int last23PmDayOfYear = -1;
     EspNowTransport transport;
-    HeaterEspNow heaterEspNow;
+    HeaterWithPowerMeter heaterDevice;
     HeaterFsm heaterFsm;
-    PowerMeter powerMeter;
 
 
     HourlySurplusAlgorithm hourlySurplusAlgorithm;
