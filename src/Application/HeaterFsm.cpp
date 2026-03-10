@@ -1,66 +1,94 @@
 #include "HeaterFsm.h"
 #include "GlobalTypes.h"
+#include "IShlProtocolTransport.h"
+#include "Log.h"
 
-HeaterFsm::HeaterFsm(HeaterAPI& heater)
-    : _heater(heater) {}
 
-void HeaterFsm::startCommand(bool turnOn) {
-    if (_state == State::WaitingAck) {
-        return;
-    }
-    _expectedState = turnOn;
-    _state = State::WaitingAck;
-    _retryCount = 0;
-    sendCommand();
+
+void HeaterFsm::registerTransport(IShlProtocolTransport* transportLayer) {
+    _transport = transportLayer;
 }
 
-HeaterFsm::Result HeaterFsm::step(const ApplicationMessagePacket& evt) {
-    if (_state == State::Idle) {
-        return {Next::Acked, INTERVAL_100_MS};
-    }
+void HeaterFsm::registerHeaterMac(const uint8_t* mac) {
+    memcpy(MAC_HEATER, mac, 6);
+    printf("Heater MAC registered: %02X:%02X:%02X:%02X:%02X:%02X\n",
+           MAC_HEATER[0], MAC_HEATER[1], MAC_HEATER[2],
+           MAC_HEATER[3], MAC_HEATER[4], MAC_HEATER[5]);
+}
 
-    // waiting for ack/state report
-    if (evt.type == ApplicationCommandType::MatterPacket) {
-        const MatterLikePacket& ml = evt.payload.matterPacket.packet;
-        if (handleAckPacket(ml)) {
+void HeaterFsm::setHeaterState(bool requestedState) {
+    _expectedHeaterState = requestedState;
+}
+
+HeaterFsm::Result HeaterFsm::handleIdleState(const ApplicationMessagePacket& evt) {
+    _state = State::WaitingResponse;
+    _retryCount = 0;
+    sendCommand(_expectedHeaterState);
+    return {Next::Stay, INTERVAL_100_MS, 0, 0};
+}
+
+HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessagePacket& evt) {
+    if (evt.type == ApplicationCommandType::ProtocolPacket) {
+        const ShlProtocolPacket& pkt = evt.payload.protocolPacket.packet;
+        uint16_t totalPower;
+        uint16_t voltage;
+        if (handleResponse(pkt, totalPower, voltage)) {
             _state = State::Idle;
-            return {Next::Acked, INTERVAL_100_MS};
+            return {Next::RecivedResponse, DO_NOT_RUN_TIMER, totalPower, voltage};
         }
-        return {Next::Stay, INTERVAL_100_MS};
+        else{
+            // shout be eadge case, we received response but it is not what we expected,
+            // so we will retry as standard timeout case - just wait for timer and then resend command
+            LOG_ERROR("Heater return unexpected state, retrying... (retry #%u)", _retryCount);
+            return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
+        }
     }
 
     if (evt.type == ApplicationCommandType::Timer) {
         if (_retryCount >= 3) {
             _state = State::Idle;
-            return {Next::Error, INTERVAL_100_MS};
+            return {Next::Error, INTERVAL_100_MS, 0, 0};
         }
-        sendCommand();
-        return {Next::Stay, INTERVAL_100_MS};
+        sendCommand(_expectedHeaterState);
+        return {Next::Stay, INTERVAL_100_MS, 0, 0};
     }
 
-    return {Next::Stay, INTERVAL_100_MS};
 }
 
-void HeaterFsm::sendCommand() {
-    if (_expectedState) {
-        _heater.turnOn();
-    } else {
-        _heater.turnOff();
+HeaterFsm::Result HeaterFsm::step(const ApplicationMessagePacket& evt) {
+    switch(_state) {
+        case State::Idle:
+            return handleIdleState(evt);
+        case State::WaitingResponse:
+            return handleWaitingResponseState(evt);
+        default:
+            return {Next::Error, INTERVAL_100_MS, 0, 0};
     }
+}
+
+void HeaterFsm::sendCommand(bool turnOn) {
+    //for now we switching only first relay, second is not used
+    ShlProtocolPacket packet = ShlProtocol::createOnOffPayload(_messageCounter++, turnOn, false);
+    sendPacket(packet);
     _retryCount++;
 }
 
-bool HeaterFsm::handleAckPacket(const MatterLikePacket& ml) {
-    if (MatterLike::isAckResponsePacket(ml)) {
-        return true;
+void HeaterFsm::sendPacket(const ShlProtocolPacket& packet) const {
+    if (!_transport) {
+        Serial.println("HeaterFsm::transport not registered");
+        return;
     }
+    _transport->send(MAC_HEATER, packet);
+}
 
-    if (ml.payload.clusterId == CLUSTER_ONOFF &&
-        ml.payload.commandId == CMD_REPORT_ATTRIBUTE &&
-        ml.payload.attributeId == ATTR_ONOFF_STATE) {
-        bool reportedState = (ml.payload.value != 0);
-        return reportedState == _expectedState;
+bool HeaterFsm::handleResponse(const ShlProtocolPacket& pkt, uint16_t& totalPower, uint16_t& voltage) {
+    if (pkt.commandId == SHL_PROTOCOL_CMD_REPORT_ALL || pkt.commandId == SHL_PROTOCOL_CMD_REPORT_POWER || pkt.commandId == SHL_PROTOCOL_CMD_REPORT_VOLTAGE) {
+        bool reportedState = (pkt.relay1 != 0);
+        //we check only first relay state, second is not used
+        totalPower = pkt.totalPower;
+        voltage = pkt.voltage;
+        return reportedState == _expectedHeaterState;
     }
-
+    LOG_ERROR("HeaterFsm::handleResponse - unexpected commandId: %u", pkt.commandId);
     return false;
 }

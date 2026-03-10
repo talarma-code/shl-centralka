@@ -4,7 +4,7 @@
 #include "esp_system.h"
 #include "StaticString.h"
 #include "GlobalTypes.h"
-#include "MatterLikePacket.h"
+#include "ShlProtocolPacket.h"
 #include "SystemTimer.h"
 
 
@@ -79,7 +79,7 @@ struct SystemLogPacket  {
 
 enum class ApplicationCommandType : uint8_t {
     Timer = 0,
-    MatterPacket = 1,
+    ProtocolPacket = 1,
     HeaterCommand = 2,
     RtcSync = 3
 };
@@ -105,7 +105,7 @@ struct ApplicationMessagePacket {
     ApplicationCommandType type;
     union {
         TimerEvent timerEvent;
-        MatterPacketWithMac matterPacket;
+        ShlProtocolWithMacAddress protocolPacket;
         HeaterCommandPacket heaterCommandPacket;
         RtcSyncCommandPacket rtcSyncCommandPacket;
     } payload;

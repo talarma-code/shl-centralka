@@ -1,8 +1,7 @@
 #pragma once
-#include "EspNowTransport.h"
-#include "IMatterReceiver.h"
+#include "ShlProtocolTransport.h"
+#include "IShlProtocolReceiver.h"
 #include "ActiveTask.h"
-#include "HeaterWithPowerMeter.h"
 #include "ActivePoolRef.h"
 #include "SystemTimer.h"
 #include "IntertaskDataModel.h"
@@ -21,12 +20,12 @@ class TimerToApplicationMessage {
     }
 };
 
-class ApplicationTask : public IMatterReceiver, public ActiveTask {
+class ApplicationTask : public IShlProtocolReceiver, public ActiveTask {
 public:
     ApplicationTask(QueueHandle_t mainTaskQueueHandle, QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle);      
     void setup() override;        
     void loop() override;         
-    void handlePacket(const MatterPacketWithMac &pkt) override;
+    void handlePacket(const ShlProtocolWithMacAddress &pkt) override;
 
 private:
     static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
@@ -67,13 +66,11 @@ private:
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;
-    bool heaterRequestedState = false;
     MeasurementDataPacket lastMeasurementData{};
     
     int last23PmYear = -1;
     int last23PmDayOfYear = -1;
-    EspNowTransport transport;
-    HeaterWithPowerMeter heaterDevice;
+    ShlProtocolTransport transport;
     HeaterFsm heaterFsm;
 
 

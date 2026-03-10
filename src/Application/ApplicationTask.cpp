@@ -8,11 +8,11 @@
 #include "ApplicationTask.h"
 #include "GlobalTypes.h"
 
-#include "MatterLikeDebugger.h"
 #include "SystemDebuger.h"
 #include "ActiveQueueRef.h"
 #include "Log.h"
 #include "Measurements.h"
+#include "ShlProtocol.h"
 
 
 #define LED_PIN 2  // wbudowana dioda LED
@@ -21,8 +21,6 @@ static const uint8_t MAC_CENTRALKA[]   = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x30}; /
 
 ApplicationTask::ApplicationTask(QueueHandle_t mainTaskQueueHandle, QueueHandle_t haQueueHandle, QueueHandle_t dataRecorderQueueHandle) : 
     ActiveTask("application", 8192, 1),
-    heaterDevice(LED_PIN), 
-    heaterFsm(heaterDevice),
     mainTaskQueue(mainTaskQueueHandle),
     haQueueRef(haQueueHandle),
     dataRecorderQueueRef(dataRecorderQueueHandle),
@@ -46,7 +44,7 @@ const char* ApplicationTask::stateToString(state s) {
 const char* ApplicationTask::commandTypeToString(ApplicationCommandType type) {
     switch (type) {
         case ApplicationCommandType::Timer: return "Timer";
-        case ApplicationCommandType::MatterPacket: return "MatterPacket";
+        case ApplicationCommandType::ProtocolPacket: return "ProtocolPacket";
         case ApplicationCommandType::HeaterCommand: return "HeaterCommand";
         case ApplicationCommandType::RtcSync: return "RtcSync";
         default: return "Unknown";
@@ -61,7 +59,8 @@ void ApplicationTask::setup() {
     
     transport.begin(MAC_CENTRALKA, MAC_LOCAL_HEATER);
     transport.onPacketReceived(this);
-    heaterDevice.registerTransport(&transport);
+    heaterFsm.registerTransport(&transport);
+    heaterFsm.registerHeaterMac(MAC_LOCAL_HEATER);
 
     rtc.setup();
     setupSystemTime();
@@ -162,17 +161,12 @@ void ApplicationTask::loop() {
 
         if (characterRecived == 'o') {
             Serial.println("odebralem i wyslam ramke On");
-            heaterDevice.turnOn();
+            heaterFsm.sendCommand(true);
         }
 
         if (characterRecived == 'f') {
             Serial.println("odebralem i wyslam ramke Off");
-            heaterDevice.turnOff();
-            //action Off
-        }
-        if (characterRecived == 'v') {
-            Serial.println("odebralem i wyslam ramke v");
-            heaterDevice.voltage(1);
+            heaterFsm.sendCommand(false);
             //action Off
         }
         if (characterRecived == 'r') {
@@ -203,10 +197,10 @@ void ApplicationTask::sendMeasurementToHa(const MeasurementDataPacket& data) {
 }
 
 //this call is from ISR context - avoid havy operations here
-void ApplicationTask::handlePacket(const MatterPacketWithMac &pkt) {
+void ApplicationTask::handlePacket(const ShlProtocolWithMacAddress &pkt) {
     ApplicationMessagePacket msg{};
-    msg.type = ApplicationCommandType::MatterPacket;
-    msg.payload.matterPacket = pkt;
+    msg.type = ApplicationCommandType::ProtocolPacket;
+    msg.payload.protocolPacket = pkt;
     mainTaskQueue.sendFromISR(msg, nullptr);
 }
 
@@ -274,13 +268,13 @@ void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
         {
             case PowerMeterFsm::Next::NextState: 
                 calculateHeaterStatus(data);
+                _state = state::HeaterControl;
                 break;
             case PowerMeterFsm::Next::Stay:
                 _state = state::Measurements;
                 break;
             case PowerMeterFsm::Next::Error:
                 haPowerMetersErrorNotification();
-                heaterRequestedState = false; // turn off heater if we have error with power meters
                 _state = state::HeaterControl;  
                 break;
         }     
@@ -291,13 +285,15 @@ void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
 void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
     auto res = heaterFsm.step(evt);
     switch (res.next) {
-        case HeaterFsm::Next::Acked:
+        case HeaterFsm::Next::RecivedResponse:
             LOG_INFO("Heater action acknowledged");
             _state = state::HaNotification;
-            timer.start(INTERVAL_100_MS);
+            //DO NOT RUN TIMER, it is already running (as timeout timer) and will trigger transition to HaNotification state
             break;
         case HeaterFsm::Next::Stay:
-            timer.start(res.delayMs);
+            if (res.delayMs != DO_NOT_RUN_TIMER) {
+                timer.start(res.delayMs);
+            }
             break;
         case HeaterFsm::Next::Error:
             LOG_ERROR("Heater action not acknowledged");
@@ -379,16 +375,9 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
 }   
 
 void ApplicationTask::calculateHeaterStatus(const MeasurementData& data) {
-    bool heaterStatusBasedOnCalculation = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
-    collectDataForHaNotification(data, heaterStatusBasedOnCalculation);
-    if (heaterRequestedState != heaterStatusBasedOnCalculation) {
-        heaterRequestedState = heaterStatusBasedOnCalculation;
-        heaterFsm.startCommand(heaterRequestedState);
-        _state = state::HeaterControl;
-    }
-    else {
-        _state = state::HaNotification;
-    }
+    bool heaterRequestedState = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
+    heaterFsm.setHeaterState(heaterRequestedState);
+    collectDataForHaNotification(data, heaterRequestedState);
 }
 
 void ApplicationTask::haPowerMetersErrorNotification() {
