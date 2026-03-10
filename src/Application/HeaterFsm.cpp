@@ -3,8 +3,6 @@
 #include "IShlProtocolTransport.h"
 #include "Log.h"
 
-
-
 void HeaterFsm::registerTransport(IShlProtocolTransport* transportLayer) {
     _transport = transportLayer;
 }
@@ -21,10 +19,13 @@ void HeaterFsm::setHeaterState(bool requestedState) {
 }
 
 HeaterFsm::Result HeaterFsm::handleIdleState(const ApplicationMessagePacket& evt) {
-    _state = State::WaitingResponse;
-    _retryCount = 0;
-    sendCommand(_expectedHeaterState);
-    return {Next::Stay, INTERVAL_100_MS, 0, 0};
+    if (evt.type == ApplicationCommandType::Timer) {
+        _state = State::WaitingResponse;
+        _retryCount = 0;
+        sendCommand(_expectedHeaterState);
+        return {Next::Stay, INTERVAL_100_MS, 0, 0};
+    }
+    return  {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
 }
 
 HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessagePacket& evt) {
@@ -52,6 +53,9 @@ HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessage
         sendCommand(_expectedHeaterState);
         return {Next::Stay, INTERVAL_100_MS, 0, 0};
     }
+
+    LOG_ERROR("HeaterFsm::handleWaitingResponseState - unexpected event type: %u", evt.type);
+    return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
 
 }
 
