@@ -5,6 +5,7 @@
 #include "ActiveTask.h"
 #include "esp_task_wdt.h"
 #include "ActiveQueue.h"
+#include "Logger.h"
 
 
 ActiveQueue<ApplicationMessagePacket> mainTaskQueue(10);
@@ -18,6 +19,9 @@ void setup() {
   // Enable watchdog monitoring for selected FreeRTOS tasks
   application.enableWatchdog(true);
   dataRecorderTask.enableWatchdog(true);
+
+  // Initialize logger before any LOG_* macros are used
+  Logger::instance().init(dataRecorderTask.logsQueue());
 
   delay(500); // Give some time for setup
   haCommunicationTask.start();

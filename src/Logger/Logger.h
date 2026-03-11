@@ -23,6 +23,7 @@ public:
     template<typename... Args>
     void logf(LogLevel level, uint32_t timestamp, const char* format, Args... args) {
         if (!initialized || !format) {
+            Serial.println("Logger not initialized or format string is null!!!");
             return;
         }
 
@@ -45,7 +46,10 @@ private:
     void dispatch(const SystemLogPacket& pkt);
 
     ActiveQueueRef<SystemLogPacket> logQueueRef{};
+    //TODO: cheng it when go to production !!!
     volatile LogLevel logLevel = LogLevel::detailDebug; 
+
+    //TODO!!! - change it before long term tests !!
     volatile Output output = Output::SdAndUart;             
     bool initialized = false;
 };

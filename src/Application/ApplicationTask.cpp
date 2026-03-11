@@ -55,15 +55,16 @@ void ApplicationTask::setup() {
     Serial.begin(115200);
     Serial.println("\n=== SHL Centralka Start ===");
 
+    //setup RTC and system time first to have correct timestamps in logs from the beginning
+    rtc.setup();
+    setupSystemTime();
+
     logLastResetReason();
     
     transport.begin(MAC_CENTRALKA, MAC_LOCAL_HEATER);
     transport.onPacketReceived(this);
     heaterFsm.registerTransport(&transport);
     heaterFsm.registerHeaterMac(MAC_LOCAL_HEATER);
-
-    rtc.setup();
-    setupSystemTime();
     powerMeterFsm.setup();
 
     timer.start(25000);
