@@ -66,7 +66,10 @@ private:
     uint8_t _hardwerModemReserCounter;
 
 
-    const char* _apn = "internet";
+    //const char* _apn = "internet";        // APN for Orange Poland/nju (SIM7000G), no username/password
+    const char* _apn = "www.mobilny.pl";    // APN for T-Mobile Poland/otvarta (SIM7000E), no username/password
+
+    
 
      void connectionManager(ModemState s);
      void modemPowerOff();

@@ -21,7 +21,7 @@ PowerMeterFsm::Result PowerMeterFsm::messurementReady(MeasurementData &data) {
         return restartingState();
     
     default:
-        return {Next::Error, 0};
+        return {Next::Error, INTERVAL_100_MS};
     }
 
 }
