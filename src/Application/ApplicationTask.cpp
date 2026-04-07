@@ -154,6 +154,7 @@ void ApplicationTask::loop() {
             break;
         }
     }
+    resetWatchdog();
 
     
     //This is only test code - will be removed 
