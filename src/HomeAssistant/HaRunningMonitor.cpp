@@ -6,11 +6,7 @@
 #include <time.h>
 #include <Arduino.h>
 
-// Device RTC is configured to local time (e.g. UTC+1).
-// This offset is used to convert local epoch to UTC before
-// publishing timestamps with a trailing "Z".
-static constexpr int8_t DEVICE_LOCAL_UTC_OFFSET_HOURS = 1;
-
+// Device system clock is maintained in UTC and heartbeat payloads are published as UTC timestamps.
 HaRunningMonitor::Result HaRunningMonitor::step() {
     // Maintain MQTT session
     _client.loop();
@@ -30,14 +26,10 @@ HaRunningMonitor::Result HaRunningMonitor::step() {
     if (_heartbeatTickCounter >= _ticksPerHeartbeat) {
         _heartbeatTickCounter = 0;
 
-        // Use current time only for payload, not for scheduling
+        // Use current UTC time only for payload, not for scheduling
         time_t now = time(nullptr);
-        uint32_t nowEpochLocal = (now > 0) ? static_cast<uint32_t>(now) : 0;
-
-        uint32_t epochToPublish = nowEpochLocal;
-        if (nowEpochLocal != 0) {
-            // Convert device local time (RTC) to true UTC before formatting
-            epochToPublish = convertLocalEpochToUtc(nowEpochLocal, DEVICE_LOCAL_UTC_OFFSET_HOURS);
+        uint32_t epochToPublish = (now > 0) ? static_cast<uint32_t>(now) : 0;
+        if (epochToPublish != 0) {
             _lastHeartbeatEpoch = epochToPublish;
         }
 

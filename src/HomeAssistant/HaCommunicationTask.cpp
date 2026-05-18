@@ -11,6 +11,7 @@
 #define MODEM_RX 13  // ESP32 RX -> TX modemu
 #define MODEM_TX 14  // ESP32 TX -> RX modemu
 #define HARDWARE_MODEM_NUMBER 2  
+#define MODEM_POWER_PIN 4 // GPIO pin used to power on/off the modem (if needed)
 
 HaCommunicationTask::HaCommunicationTask(QueueHandle_t mainTaskQueueHandle) : ActiveTask("HaCommunicationTask", 10240, 3, 1),
     haQueue(10), 
@@ -38,8 +39,10 @@ HaCommunicationTask::HaCommunicationTask(QueueHandle_t mainTaskQueueHandle) : Ac
 
 void HaCommunicationTask::setup() {
     printf("HaCommunicationTask setup\r\n");
+    pinMode(MODEM_POWER_PIN, OUTPUT);
     connectionManager(ModemState::ModemPowerOn);
 }
+
 
 void HaCommunicationTask::loop()
 {
@@ -118,14 +121,17 @@ void HaCommunicationTask::handleModemPowerOn() {
     modemPowerOn();
     clearSoftwareErrorCounters();
     _state = ModemState::InitSerial;
-    timer.start(1500);
+    // Give SIM7000 enough time to power up after hardware power on
+    timer.start(8000);
 }
 
 void HaCommunicationTask::handleInitSerial() {
+    
     hardwareModem.begin(57600, SERIAL_8N1, MODEM_RX, MODEM_TX);
     LOG_INFO("Serial started");
     _state = ModemState::SoftwareRestartModem;
-    timer.start(150);
+    // Wait a bit longer before starting AT reset sequence
+    timer.start(10000);
 }
 
 void HaCommunicationTask::handleSoftwareRestartModem() {
@@ -273,11 +279,12 @@ void HaCommunicationTask::handleModemPowerOff() {
 }
 
 void HaCommunicationTask::modemPowerOff() {
-    //TODO: when hardware ready - enable modem 
+    digitalWrite(MODEM_POWER_PIN, LOW); 
 }
 
 void HaCommunicationTask::modemPowerOn() {
-    //TODO: when hardware ready - disable modem
+    LOG_INFO("Powering on modem...");
+    digitalWrite(MODEM_POWER_PIN, HIGH); 
 }
 
 void HaCommunicationTask::clearSoftwareErrorCounters() {
@@ -301,10 +308,18 @@ uint32_t HaCommunicationTask::syncNetworkTime() {
     if (ok) {
         // Convert to RTClib DateTime (timezone is returned separately by TinyGSM)
         DateTime dt(year, month, day, hour, minute, second);
-        uint32_t epoch = dt.unixtime();
-        LOG_INFO("Network time read: %04d-%02d-%02d %02d:%02d:%02d (tz=%.2f) epoch=%lu",
-                 year, month, day, hour, minute, second, timezone, static_cast<unsigned long>(epoch));
-        return epoch;
+        uint32_t localEpoch = dt.unixtime();
+        int32_t timezoneSeconds = (timezone >= 0.0f)
+            ? static_cast<int32_t>(timezone * 3600.0f + 0.5f)
+            : static_cast<int32_t>(timezone * 3600.0f - 0.5f);
+        uint32_t utcEpoch = (timezoneSeconds >= 0)
+            ? (localEpoch > static_cast<uint32_t>(timezoneSeconds) ? localEpoch - static_cast<uint32_t>(timezoneSeconds) : 0)
+            : localEpoch + static_cast<uint32_t>(-timezoneSeconds);
+
+        LOG_INFO("Network time read: %04d-%02d-%02d %02d:%02d:%02d (tz=%+.2f) localEpoch=%lu utcEpoch=%lu",
+                 year, month, day, hour, minute, second, timezone,
+                 static_cast<unsigned long>(localEpoch), static_cast<unsigned long>(utcEpoch));
+        return utcEpoch;
     } 
     else {
         LOG_ERROR("Failed to get network time");

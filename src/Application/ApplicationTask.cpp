@@ -176,8 +176,50 @@ void ApplicationTask::loop() {
             drMsg.type = SystemDataType::RtcSync;
             haQueueRef.send(drMsg);
         }
+
+                if (characterRecived == 'd') {
+            SystemDebuger::printSystemStats();
+        }
         
-        SystemDebuger::printSystemStats();
+
+
+        if (characterRecived == 'R') {
+            SystemMessagePacket drMsg;
+            drMsg.type = SystemDataType::RtcSync;
+            haQueueRef.send(drMsg);
+            _state = state::RtcSync;
+        }
+
+        if (characterRecived == '1') {
+            float value;
+            sdm120ctPowerMeter.voltage(value, 0x01);
+            Serial.print("Voltage L1: ");   
+            Serial.println(value);
+        }
+        if (characterRecived == '2') {
+            float value;
+            sdm120ctPowerMeter.voltage(value, 0x02);
+            Serial.print("Voltage L2: ");   
+            Serial.println(value);
+        }
+
+        
+        if (characterRecived == '3') {
+            float power;
+            sdm120ctPowerMeter.activePower(power, 0x01);
+            Serial.print("Active Power L1: ");   
+            Serial.println(power);
+        }
+        if (characterRecived == '4') {
+            float power;
+            sdm120ctPowerMeter.activePower(power, 0x02);
+            Serial.print("Active Power L2: ");   
+            Serial.println(power);
+        }
+
+
+
+        
         delay(1000);
     }
 }
@@ -251,6 +293,11 @@ void ApplicationTask::handleIdleState(ApplicationMessagePacket evt) {
             timer.start(200); 
             LOG_INFO("Transitioning to Measurements state");
         }
+    }
+    if (evt.type == ApplicationCommandType::RtcSync) {
+        LOG_INFO("Receive new timestamp from GSM network - set up RTC");
+        uint32_t epoch = evt.payload.rtcSyncCommandPacket.epochTime;
+        updateRtcTime(epoch);
     }
 }
 
@@ -344,6 +391,8 @@ void ApplicationTask::handleHistoricalDataSyncState(ApplicationMessagePacket evt
 
 
 void ApplicationTask::updateSystemTime(uint32_t epochTime) {
+    
+    Serial.println("Updating system time...");
     time_t epoch = static_cast<time_t>(epochTime);
     struct timeval tv;
     tv.tv_sec = epoch;

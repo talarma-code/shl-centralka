@@ -1,8 +1,8 @@
 #include "PowerMeterFsm.h"  
 #include "GlobalTypes.h"
 
-#define L1_POWER_METER_MODBUS_ID 1
-#define L2_POWER_METER_MODBUS_ID 2
+#define L1_POWER_METER_MODBUS_ID 0x01
+#define L2_POWER_METER_MODBUS_ID 0x02
 
 PowerMeterFsm::PowerMeterFsm() : orwe520PowerMeter(), sdm120ctPowerMeter() {}
 
@@ -67,8 +67,10 @@ PowerMeterFsm::Result PowerMeterFsm::restartingState() {
 
 bool PowerMeterFsm::getPowerData(float& l1Energy, float& l2Energy, float& homeTotalEnergy) {
     auto statusL1 = sdm120ctPowerMeter.importActiveEnergy(l1Energy, L1_POWER_METER_MODBUS_ID);
+    delay(60); 
     auto statusL2 = sdm120ctPowerMeter.importActiveEnergy(l2Energy, L2_POWER_METER_MODBUS_ID);
-
+    delay(60); 
+    
     if (statusL1 != SDM120CTPowerMeter::ReadStatus::Ok) {
         _l1ReadErrorCount++;
     }
@@ -111,6 +113,7 @@ void PowerMeterFsm::getVoltage(MeasurementData &data) {
     } else {
         data.L1Voltage_x10 = 0;
     }
+    delay(60);
 
     if (sdm120ctPowerMeter.voltage(voltageL2, L2_POWER_METER_MODBUS_ID) == SDM120CTPowerMeter::ReadStatus::Ok) {
         data.L2Voltage_x10 = static_cast<uint16_t>(voltageL2 * 10);

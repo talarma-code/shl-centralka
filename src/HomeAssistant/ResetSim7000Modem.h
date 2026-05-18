@@ -42,5 +42,5 @@ private:
     uint16_t _delayWaitCfun0Ms = 1000;
     uint16_t _delayWaitCfun1Ms = 1500;
     uint16_t _delayProbeAtMs   = 500;
-    uint8_t  _retryLimit       = 10;
+    uint8_t  _retryLimit       = 30;
 };

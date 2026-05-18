@@ -83,4 +83,7 @@ private:
     SystemTimerT<ApplicationMessagePacket, TimerToApplicationMessage> timer;
 
     state _state = state::Idle;
+
+    //TODO: temporary, for testing only - remove later
+    SDM120CTPowerMeter sdm120ctPowerMeter;
 };

@@ -32,8 +32,8 @@ void DataRecorderTask::loop()
             Serial.println("Failed to write log to SD");
         } else {
             //TODO: remove debug print
-            Serial.println("Log saved to SD: ");
-            Serial.println(logLine.c_str());
+            // Serial.println("Log saved to SD: ");
+            // Serial.println(logLine.c_str());
         }
 
         // Allow other tasks to run between processing log entries

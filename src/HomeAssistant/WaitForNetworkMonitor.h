@@ -37,7 +37,7 @@ private:
 
     // Defaults aligned with previous in-place logic
     uint16_t _pollDelayMs = 500;
-    uint8_t  _maxAttempts = 20;   // can be overridden from task via configure()
+    uint8_t  _maxAttempts = 360;   // wait up to 30 minutes (360 * 500ms)
     uint16_t _onSuccessDelayMs = 100;
     uint16_t _onRestartDelayMs = 500;
 };
