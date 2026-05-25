@@ -216,9 +216,18 @@ void ApplicationTask::loop() {
             Serial.print("Active Power L2: ");   
             Serial.println(power);
         }
-
-
-
+        if (characterRecived == '5') {
+            float energy;
+            sdm120ctPowerMeter.importActiveEnergy(energy, 0x01);
+            Serial.print("Import Active Energy L1: ");   
+            Serial.println(energy);
+        }
+        if (characterRecived == '6') {
+            float energy;
+            sdm120ctPowerMeter.importActiveEnergy(energy, 0x02);
+            Serial.print("Import Active Energy L2: ");   
+            Serial.println(energy);
+        }
         
         delay(1000);
     }

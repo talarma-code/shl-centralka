@@ -48,16 +48,16 @@ void SDM120CTPowerMeter::debugPrintRequest(uint8_t slave, uint8_t func, uint16_t
     uint8_t crc_lo = crc & 0xFF;
     uint8_t crc_hi = (crc >> 8) & 0xFF;
 
-    // Print human-friendly hex frame
-    Serial.print("Modbus TX: ");
-    for (int i = 0; i < 6; ++i) {
-        if (frame[i] < 0x10) Serial.print('0');
-        Serial.print(frame[i], HEX);
-        Serial.print(' ');
-    }
-    if (crc_lo < 0x10) Serial.print('0'); Serial.print(crc_lo, HEX); Serial.print(' ');
-    if (crc_hi < 0x10) Serial.print('0'); Serial.print(crc_hi, HEX);
-    Serial.println();
+    // // Print human-friendly hex frame
+    // Serial.print("Modbus TX: ");
+    // for (int i = 0; i < 6; ++i) {
+    //     if (frame[i] < 0x10) Serial.print('0');
+    //     Serial.print(frame[i], HEX);
+    //     Serial.print(' ');
+    // }
+    // if (crc_lo < 0x10) Serial.print('0'); Serial.print(crc_lo, HEX); Serial.print(' ');
+    // if (crc_hi < 0x10) Serial.print('0'); Serial.print(crc_hi, HEX);
+    // Serial.println();
 }
 
 SDM120CTPowerMeter::ReadStatus SDM120CTPowerMeter::voltage(float &value, uint8_t slaveId) {

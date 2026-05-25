@@ -84,9 +84,17 @@ bool PowerMeterFsm::getPowerData(float& l1Energy, float& l2Energy, float& homeTo
         return false;
     }
 
-    homeTotalEnergy = static_cast<uint32_t>(orwe520PowerMeter.totalEnergyKWh());
-    l1Energy = static_cast<uint32_t>(l1Energy);
-    l2Energy = static_cast<uint32_t>(l2Energy);
+    const float homeTotalEnergyRaw = orwe520PowerMeter.totalEnergyKWh();
+    homeTotalEnergy = homeTotalEnergyRaw;
+
+    Serial.print("L1 Energy: ");
+    Serial.print(l1Energy); 
+    Serial.print(" kWh, L2 Energy: ");
+    Serial.print(l2Energy);
+    Serial.print(" kWh, Home Total Energy: ");
+    Serial.print(homeTotalEnergyRaw);
+    Serial.println(" kWh");
+
     return true;
 }
 
@@ -123,14 +131,18 @@ void PowerMeterFsm::getVoltage(MeasurementData &data) {
 }   
 
 void PowerMeterFsm::calculateTotalAndPeriondPowerData(float l1Energy, float l2Energy, float homeTotalEnergy, MeasurementData &data) {
+    constexpr float kWhToWh = 1000.0f;
+    const uint32_t l1EnergyWh = static_cast<uint32_t>(l1Energy * kWhToWh);
+    const uint32_t l2EnergyWh = static_cast<uint32_t>(l2Energy * kWhToWh);
+    const uint32_t homeTotalEnergyWh = static_cast<uint32_t>(homeTotalEnergy * kWhToWh);
 
-    data.L1Power = _l1TotalPower > (uint32_t)(l1Energy) ? _l1TotalPower - (uint32_t)(l1Energy) : (uint32_t)(l1Energy);
-    data.L2Power = _l2TotalPower > (uint32_t)(l2Energy) ? _l2TotalPower - (uint32_t)(l2Energy) : (uint32_t)(l2Energy);
-    data.HomePower = _homeTotalPower > (uint32_t)(homeTotalEnergy) ? _homeTotalPower - (uint32_t)(homeTotalEnergy) : (uint32_t)(homeTotalEnergy);
+    data.L1Power = _l1TotalPower > l1EnergyWh ? _l1TotalPower - l1EnergyWh : l1EnergyWh;
+    data.L2Power = _l2TotalPower > l2EnergyWh ? _l2TotalPower - l2EnergyWh : l2EnergyWh;
+    data.HomePower = _homeTotalPower > homeTotalEnergyWh ? _homeTotalPower - homeTotalEnergyWh : homeTotalEnergyWh;
 
-    _l1TotalPower = (uint32_t)(l1Energy);
-    _l2TotalPower = (uint32_t)(l2Energy);
-    _homeTotalPower = (uint32_t)(homeTotalEnergy);
+    _l1TotalPower = l1EnergyWh;
+    _l2TotalPower = l2EnergyWh;
+    _homeTotalPower = homeTotalEnergyWh;
     data.L1TotalPower = _l1TotalPower;
     data.L2TotalPower = _l2TotalPower;  
     data.HomeTotalPower = _homeTotalPower;
