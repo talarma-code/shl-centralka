@@ -101,6 +101,9 @@ void HaCommunicationTask::connectionManager(ModemState s) {
         case ModemState::MqttConnect:
             handleMqttConnect();
             break;
+        case ModemState::PublishResetReason:
+            publishResetReason();
+            break;
         case ModemState::Running:
             handleRunning();
             break;
@@ -197,7 +200,7 @@ void HaCommunicationTask::handleMqttConnect() {
         LOG_INFO("MQTT connected");
         clearSoftwareErrorCounters();
 
-        _state = ModemState::Running;
+        _state = ModemState::PublishResetReason;
         timer.start(100);
     } else {
         LOG_INFO("MQTT connect failed, rc=%d", mqttClient.state());
@@ -207,6 +210,27 @@ void HaCommunicationTask::handleMqttConnect() {
         }
         timer.start(500);
     }
+}
+
+void HaCommunicationTask::publishResetReason() {
+    LOG_INFO("Publishing reset reason...");
+    if (!mqttClient.connected()) {
+        LOG_ERROR("MQTT disconnected, cannot publish reset reason");
+        findReasonAndReconnect();
+        return;
+    }
+
+    if (!statusPublisher.publishResetReason()) {
+        LOG_ERROR("Publish reset reason failed, reconnecting...");
+        findReasonAndReconnect();
+        return;
+    }
+    LOG_INFO("Reset reason published, moving to Running state");
+
+    _state = ModemState::Running;
+     timer.start(100);
+
+    LOG_INFO("Reset reason published successfully");
 }
 
 void HaCommunicationTask::handleRunning() {

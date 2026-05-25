@@ -40,6 +40,7 @@ private:
         WaitForNetwork,
         GprsConnect,
         MqttConnect,
+        PublishResetReason,
         Running,
         Error,
         ModemPowerOff
@@ -84,6 +85,7 @@ private:
     void handleWaitForNetwork();
     void handleGprsConnect();
     void handleMqttConnect();
+    void publishResetReason();
     void handleRunning();
     void handleError();
     void handleModemPowerOff();

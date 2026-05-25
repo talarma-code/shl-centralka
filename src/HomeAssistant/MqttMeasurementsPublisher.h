@@ -10,6 +10,7 @@ public:
         : _client(client), _baseTopic(baseTopic) {}
 
     bool publishPacket(const MeasurementDataPacket& m);
+    bool publishResetReason();
 
     // Publish device online heartbeat with local timestamp
     bool publishOnlineHeartbeat(uint32_t epoch);

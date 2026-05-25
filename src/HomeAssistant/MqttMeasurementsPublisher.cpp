@@ -1,5 +1,6 @@
 #include "MqttMeasurementsPublisher.h"
 #include "TimeUtils.h"
+#include "ResetReason.h"
 #include "Log.h"
 
 bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
@@ -17,8 +18,29 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     publishTopicPayload("voltage/l1", formatVoltageString(m.L1Voltage_x10).c_str());
     publishTopicPayload("voltage/l2", formatVoltageString(m.L2Voltage_x10).c_str());
     publishUint("heater/enable_seconds", m.HeaterEnableForSeconds);
+
     _client.loop();
 
+    LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);
+
+    // If 3 or more individual publishes in this packet failed,
+    // treat the whole packet as failed so caller can trigger reconnect.
+    if (_punlishFailureCount >= 3) {
+        return false;
+    }
+    return true;
+}
+
+bool MqttMeasurementsPublisher::publishResetReason() {
+    _publishSuccessCount = 0;
+    _punlishFailureCount = 0;
+    _client.loop();         //this is cricial to keep connection alive and avoid publish failures
+    delay(60);              //this is cricial to keep connection alive and avoid publish failures
+
+    publishTopicPayload("reason", lastResetReason());
+    publishUint("code", lastResetReasonCode());
+
+    _client.loop();
     LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);
 
     // If 3 or more individual publishes in this packet failed,

@@ -13,7 +13,7 @@
 #include "Log.h"
 #include "Measurements.h"
 #include "ShlProtocol.h"
-
+#include "ResetReason.h"
 
 #define LED_PIN 2  // wbudowana dioda LED
 static const uint8_t MAC_LOCAL_HEATER[]  = {0x74, 0x61, 0x6C, 0x61, 0x72, 0x31}; // talar1 - heater
@@ -71,24 +71,8 @@ void ApplicationTask::setup() {
 }
 
 void ApplicationTask::logLastResetReason() {
-    esp_reset_reason_t reason = esp_reset_reason();
-    const char* reasonStr = "UNKNOWN";
 
-    switch (reason) {
-        case ESP_RST_POWERON:    reasonStr = "POWERON"; break;
-        case ESP_RST_EXT:        reasonStr = "EXTERNAL"; break;
-        case ESP_RST_SW:         reasonStr = "SW"; break;
-        case ESP_RST_PANIC:      reasonStr = "PANIC"; break;
-        case ESP_RST_INT_WDT:    reasonStr = "INT_WDT"; break;
-        case ESP_RST_TASK_WDT:   reasonStr = "TASK_WDT"; break;
-        case ESP_RST_WDT:        reasonStr = "OTHER_WDT"; break;
-        case ESP_RST_DEEPSLEEP:  reasonStr = "DEEPSLEEP"; break;
-        case ESP_RST_BROWNOUT:   reasonStr = "BROWNOUT"; break;
-        case ESP_RST_SDIO:       reasonStr = "SDIO"; break;
-        default:                 reasonStr = "UNKNOWN"; break;
-    }
-
-    LOG_ERROR("Last reset reason: %s (%d)", reasonStr, static_cast<int>(reason));
+    LOG_ERROR("Last reset reason: %s (%d)", lastResetReason(), lastResetReasonCode());
 }
 
 void ApplicationTask::setupSystemTime() {
