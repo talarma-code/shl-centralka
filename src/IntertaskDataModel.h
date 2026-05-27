@@ -12,7 +12,9 @@ enum class SystemDataType : uint8_t {
     Measurements = 0,
     Events = 1,
     Timer = 2,
-    RtcSync = 3
+    RtcSync = 3,
+    MeasurmentOnlyVolatile = 4,
+    NotifyEspNowEvent = 5
 };
 
 enum class MeasurementDataType : uint8_t {
@@ -24,6 +26,12 @@ enum class HeaterStatus : uint8_t {
     Off = 0,
     On = 1
 };
+
+enum class HeaterCommunicationStatus : uint8_t {
+    NoCommunication = 0,
+    Ok = 1
+};
+
 
 
 struct TimerDataPacket {
@@ -52,12 +60,28 @@ struct MeasurementDataPacket {
     MeasurementDataType measurementType;
 };
 
+struct MeasurementVolatilePacket {
+    uint32_t timestamp;
+
+    uint16_t L1Voltage_x10; 
+    uint16_t L2Voltage_x10;
+
+    MeasurementDataType measurementType;
+};
+
+struct EspNowEventPacket {
+    uint32_t timestamp;
+    HeaterCommunicationStatus heaterCommunicationStatus;
+};
+
 struct SystemMessagePacket {
     SystemDataType type;
     union {
         MeasurementDataPacket measurementData;
         SystemEventPacket systemEvent;
         TimerDataPacket timerData;
+        MeasurementVolatilePacket measurementVolatileData;
+        EspNowEventPacket espNowEventData;
     } payload;
 
 };

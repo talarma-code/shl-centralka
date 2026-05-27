@@ -38,8 +38,12 @@ void Logger::dispatch(const SystemLogPacket& pkt) {
     }
 
     if (output == Output::UartOnly || output == Output::SdAndUart) {
-        Serial.printf("[%lu] [%u] %s\n",
-                      static_cast<unsigned long>(pkt.timestamp),
+        unsigned long currentMillis = millis();
+        unsigned long sec = static_cast<unsigned long>(pkt.timestamp);
+        unsigned long ms = currentMillis % 1000UL;
+        Serial.printf("[%lu.%03lu] [%u] %s\n",
+                      sec,
+                      ms,
                       static_cast<uint8_t>(pkt.level),
                       pkt.logMessage.c_str());
     }

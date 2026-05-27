@@ -63,6 +63,7 @@ private:
     void haPowerMetersErrorNotification();
     static const char* stateToString(state s);
     static const char* commandTypeToString(ApplicationCommandType type);
+    void espNowCommunicationErrorNotification(bool status);
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;

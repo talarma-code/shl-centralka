@@ -23,7 +23,7 @@ HeaterFsm::Result HeaterFsm::handleIdleState(const ApplicationMessagePacket& evt
         _state = State::WaitingResponse;
         _retryCount = 0;
         sendCommand(_expectedHeaterState);
-        return {Next::Stay, INTERVAL_100_MS, 0, 0};
+        return {Next::Stay, INTERVAL_5_SECONDS_MS, 0, 0};
     }
     return  {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
 }
@@ -51,7 +51,7 @@ HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessage
             return {Next::Error, INTERVAL_100_MS, 0, 0};
         }
         sendCommand(_expectedHeaterState);
-        return {Next::Stay, INTERVAL_100_MS, 0, 0};
+        return {Next::Stay, INTERVAL_5_SECONDS_MS, 0, 0};
     }
 
     LOG_ERROR("HeaterFsm::handleWaitingResponseState - unexpected event type: %u", evt.type);

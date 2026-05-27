@@ -328,7 +328,8 @@ void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
     auto res = heaterFsm.step(evt);
     switch (res.next) {
         case HeaterFsm::Next::RecivedResponse:
-            LOG_INFO("Heater action acknowledged");
+            LOG_INFO("Heater action acknowledged, totalPower: %u W, voltage: %u.%u V", res.totalPower, res.voltage / 10, res.voltage % 10);
+            espNowCommunicationErrorNotification(true);
             _state = state::HaNotification;
             //DO NOT RUN TIMER, it is already running (as timeout timer) and will trigger transition to HaNotification state
             break;
@@ -339,9 +340,20 @@ void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
             break;
         case HeaterFsm::Next::Error:
             LOG_ERROR("Heater action not acknowledged");
+            espNowCommunicationErrorNotification(false);
             _state = state::HaNotification;
             timer.start(INTERVAL_100_MS);
             break;
+    }
+}
+
+void ApplicationTask::espNowCommunicationErrorNotification(bool status) {
+    SystemMessagePacket haMsg;
+    haMsg.type = SystemDataType::NotifyEspNowEvent;
+    haMsg.payload.espNowEventData.timestamp = (uint32_t)(millis() / 1000UL);
+    haMsg.payload.espNowEventData.heaterCommunicationStatus = status ? HeaterCommunicationStatus::Ok : HeaterCommunicationStatus::NoCommunication;
+    if(!haQueueRef.send(haMsg, 50)) {           
+        LOG_ERROR("Critical: HaQueue full, cannot send error notification!!!"); 
     }
 }
 
@@ -419,12 +431,18 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
 }   
 
 void ApplicationTask::calculateHeaterStatus(const MeasurementData& data) {
+    LOG_INFO("Calculating heater status with data: L1Power=%u W, L2Power=%u W, HomePower=%u W", data.L1Power, data.L2Power, data.HomePower);
     bool heaterRequestedState = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
+    LOG_INFO("Heater requested state: %s", heaterRequestedState ? "ON" : "OFF");
     heaterFsm.setHeaterState(heaterRequestedState);
     collectDataForHaNotification(data, heaterRequestedState);
 }
 
 void ApplicationTask::haPowerMetersErrorNotification() {
-    //todo - implement error notification to HA, maybe with retry mechanism
+    // SystemMessagePacket haMsg;
+    // haMsg.type = SystemDataType::NotifyEspNowEvent;
+    // if(!haQueueRef.send(haMsg, 50)) {           
+    //     LOG_ERROR("Critical: HaQueue full, cannot send error notification!!!"); 
+    // }
     LOG_ERROR("Power meter measurement failed after retries, notifying HA");
 }

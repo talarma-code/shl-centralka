@@ -136,9 +136,9 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(float l1Energy, float l2En
     const uint32_t l2EnergyWh = static_cast<uint32_t>(l2Energy * kWhToWh);
     const uint32_t homeTotalEnergyWh = static_cast<uint32_t>(homeTotalEnergy * kWhToWh);
 
-    data.L1Power = _l1TotalPower > l1EnergyWh ? _l1TotalPower - l1EnergyWh : l1EnergyWh;
-    data.L2Power = _l2TotalPower > l2EnergyWh ? _l2TotalPower - l2EnergyWh : l2EnergyWh;
-    data.HomePower = _homeTotalPower > homeTotalEnergyWh ? _homeTotalPower - homeTotalEnergyWh : homeTotalEnergyWh;
+    data.L1Power = l1EnergyWh > _l1TotalPower ? l1EnergyWh - _l1TotalPower : 0;
+    data.L2Power = l2EnergyWh > _l2TotalPower ? l2EnergyWh - _l2TotalPower : 0;
+    data.HomePower = homeTotalEnergyWh > _homeTotalPower ? homeTotalEnergyWh - _homeTotalPower : 0;
 
     _l1TotalPower = l1EnergyWh;
     _l2TotalPower = l2EnergyWh;

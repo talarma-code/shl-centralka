@@ -51,16 +51,28 @@ void HaCommunicationTask::loop()
         if (msg.type == SystemDataType::Timer) {
             connectionManager(_state);
         }
-        else if (msg.type == SystemDataType::Measurements) {
+        else if (msg.type == SystemDataType::Measurements || msg.type == SystemDataType::NotifyEspNowEvent) {
             if (_state != ModemState::Running) {
                 LOG_INFO("Cannot publish, modem not running yeat");
             } else if (!mqttClient.connected()) {
                 LOG_ERROR("MQTT disconnected, Measurements");
                 findReasonAndReconnect();
-            } else if (!measPublisher.publishPacket(msg.payload.measurementData)) {
-                LOG_ERROR("Publish measurement packet failed - reconnecting...");
-                findReasonAndReconnect();
             }
+            else {
+                if (msg.type == SystemDataType::Measurements) {
+                    if (!measPublisher.publishPacket(msg.payload.measurementData)) {
+                    LOG_ERROR("Publish measurement packet failed - reconnecting...");
+                    findReasonAndReconnect();
+                }
+                    
+                } else if (msg.type == SystemDataType::NotifyEspNowEvent) {
+                    statusPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus);
+            }
+            }  
+            
+
+
+
         }
         else if (msg.type == SystemDataType::RtcSync) {
             if (_state == ModemState::Running) {
@@ -158,18 +170,24 @@ void HaCommunicationTask::handleSoftwareRestartModem() {
 }
 
 void HaCommunicationTask::handleWaitForNetwork() {
+    
     LOG_INFO("Waiting for network (poll)...");
     const auto res = waitForNetworkMonitor.step();
+    int signalQuality = 0;
     switch (res.next) {
         case WaitForNetworkMonitor::Next::Stay:
             _state = ModemState::WaitForNetwork;
             break;
         case WaitForNetworkMonitor::Next::GprsConnect:
+            signalQuality = tinyGsmModem.getSignalQuality();
             LOG_INFO("Network OK");
-            _state = ModemState::GprsConnect;
+            LOG_INFO("Signal strength: %d", signalQuality);
+             _state = ModemState::GprsConnect;
             break;
         case WaitForNetworkMonitor::Next::SoftwareRestartModem:
             _state = ModemState::SoftwareRestartModem;
+            signalQuality = tinyGsmModem.getSignalQuality();
+            LOG_INFO("Go to software reset, signal strength: %d", signalQuality);
             break;
     }
     timer.start(res.delayMs);

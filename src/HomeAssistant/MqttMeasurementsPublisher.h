@@ -11,6 +11,7 @@ public:
 
     bool publishPacket(const MeasurementDataPacket& m);
     bool publishResetReason();
+    bool publishEspNowEvent(HeaterCommunicationStatus heaterCommunicationStatus);
 
     // Publish device online heartbeat with local timestamp
     bool publishOnlineHeartbeat(uint32_t epoch);
