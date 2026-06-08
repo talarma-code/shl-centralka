@@ -19,9 +19,9 @@ public:
     Result messurementReady(MeasurementData& data);
 
 private:
-    bool getPowerData(float& l1Energy, float& l2Energy, float& homeTotalEnergy);
+    bool getPowerData(uint32_t& l1TotalEnergyWh, uint32_t& l2TotalEnergyWh, uint32_t& homeTotalEnergyWh);
     void getVoltage( MeasurementData &data);   
-    void calculateTotalAndPeriondPowerData(float l1Energy, float l2Energy, float homeTotalEnergy, MeasurementData &data); 
+    void calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, uint32_t l2TotalEnergyWh, uint32_t homeTotalEnergyWh, MeasurementData &data); 
     void resetL1PowerOn();
     void resetL1PowerOff();
     void resetL2PowerOn();

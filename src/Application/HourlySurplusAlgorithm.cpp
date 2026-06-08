@@ -23,6 +23,7 @@
 #endif
 
 #include "HourlySurplusAlgorithm.h"
+#include "Log.h"
 
 HourlySurplusAlgorithm::HourlySurplusAlgorithm(uint32_t windowSeconds)
     : lastEpoch(0), lastL1(0), lastL2(0), lastHome(0), accProducedWh(0), accConsumedWh(0), currentHour(-1), heaterOnState(false), windowSeconds(windowSeconds) {}
@@ -47,6 +48,7 @@ bool HourlySurplusAlgorithm::calculatePower(const DateTime& timestamp, uint32_t 
     uint32_t heaterWhThisInterval = heaterPowerWhPerHour * windowSeconds / 3600;
 
     // If accumulated surplus is enough for this interval, allow heater ON
+    LOG_INFO("Hour: %02d, Accumulated Produced: %u Wh, Accumulated Consumed: %u Wh, Heater needs: %u Wh", hour, accProducedWh, accConsumedWh, heaterWhThisInterval);
     if (accProducedWh >= accConsumedWh + heaterWhThisInterval) {
         heaterOnState = true;
     } else {
