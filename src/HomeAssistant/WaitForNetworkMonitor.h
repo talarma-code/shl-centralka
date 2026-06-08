@@ -33,11 +33,11 @@ public:
 
 private:
     TinyGsmSim7000& _modem;
-    uint8_t _attempts = 0;
+    uint16_t _attempts = 0;
 
     // Defaults aligned with previous in-place logic
     uint16_t _pollDelayMs = 500;
-    uint8_t  _maxAttempts = 360;   // wait up to 30 minutes (360 * 500ms)
+    uint16_t  _maxAttempts = 360;   // wait up to 30 minutes (360 * 500ms)
     uint16_t _onSuccessDelayMs = 100;
     uint16_t _onRestartDelayMs = 500;
 };

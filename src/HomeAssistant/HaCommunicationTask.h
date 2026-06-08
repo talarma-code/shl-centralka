@@ -42,8 +42,7 @@ private:
         MqttConnect,
         PublishResetReason,
         Running,
-        Error,
-        ModemPowerOff
+        Error
     };
 
     ActiveQueue<SystemMessagePacket> haQueue;
@@ -88,7 +87,6 @@ private:
     void publishResetReason();
     void handleRunning();
     void handleError();
-    void handleModemPowerOff();
 
     uint32_t syncNetworkTime();
 };

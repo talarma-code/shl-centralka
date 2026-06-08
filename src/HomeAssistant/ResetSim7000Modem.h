@@ -4,7 +4,7 @@
 
 class ResetSim7000Modem {
 public:
-    enum class Phase : uint8_t { Begin, SendCfun0, WaitCfun0, SendCfun1, WaitCfun1, ProbeAT, Done };
+    enum class Phase : uint8_t { Begin, DisableRFModule, WaitForRFDisable, EnableRFModule, WaitForRFEnable, ProbeAT, Done };
     enum class Next : uint8_t { Stay, WaitForNetwork, Error };
 
     struct Result {

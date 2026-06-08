@@ -122,9 +122,6 @@ void HaCommunicationTask::connectionManager(ModemState s) {
         case ModemState::Error:
             handleError();
             break;
-        case ModemState::ModemPowerOff:
-            handleModemPowerOff();
-            break;
         default:
             break;
     }
@@ -137,7 +134,7 @@ void HaCommunicationTask::handleModemPowerOn() {
     clearSoftwareErrorCounters();
     _state = ModemState::InitSerial;
     // Give SIM7000 enough time to power up after hardware power on
-    timer.start(8000);
+    timer.start(20000);
 }
 
 void HaCommunicationTask::handleInitSerial() {
@@ -284,27 +281,38 @@ void HaCommunicationTask::findReasonAndReconnect() {
 void HaCommunicationTask::handleError() {
     if (_hardwerModemReserCounter == 0)
     {
-        _state = ModemState::ModemPowerOff;
-        timer.start(200);
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
+        timer.start(TIME_30_SECONDS);
     }
     if (_hardwerModemReserCounter == 1)
     {
-        _state = ModemState::ModemPowerOff;
-        timer.start(TIME_5_MINUTEs);
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
+        timer.start(TIME_3_MINUTEs);
     }
     if (_hardwerModemReserCounter == 2)
     {
-        _state = ModemState::ModemPowerOff;
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
+        timer.start(TIME_5_MINUTEs);
+    }
+    if (_hardwerModemReserCounter == 3)
+    {
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
         timer.start(TIME_15_MINUTEs);
     }
-    if (_hardwerModemReserCounter >= 3 && _hardwerModemReserCounter < 8)
+    if (_hardwerModemReserCounter >= 4 && _hardwerModemReserCounter < 8)
     {
-        _state = ModemState::ModemPowerOff;
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
         timer.start(TIME_30_MINUTEs);
     }
     if (_hardwerModemReserCounter >= 8)
     {
-        _state = ModemState::ModemPowerOff;
+        modemPowerOff();
+        _state = ModemState::ModemPowerOn;
         timer.start(TIME_1_HOUR);
     }
 
@@ -312,15 +320,9 @@ void HaCommunicationTask::handleError() {
     clearSoftwareErrorCounters();
 }
 
-void HaCommunicationTask::handleModemPowerOff() {
+void HaCommunicationTask::modemPowerOff() {
     LOG_INFO("Powering off modem...");
     _hardwerModemReserCounter++;
-    modemPowerOff();
-    _state = ModemState::ModemPowerOn;
-    timer.start(3000);
-}
-
-void HaCommunicationTask::modemPowerOff() {
     digitalWrite(MODEM_POWER_PIN, LOW); 
 }
 
