@@ -34,6 +34,7 @@
  */
 
 #include "ResetSim7000Modem.h"
+#include "Log.h"
 
 ResetSim7000Modem::Result ResetSim7000Modem::step() {
     switch (_phase) {
@@ -57,6 +58,8 @@ ResetSim7000Modem::Result ResetSim7000Modem::step() {
             _attempts++;
             if (_attempts >= _retryLimit) {
                 _phase = Phase::Begin; // reset for next time
+                LOG_ERROR("Modem reset failed at WaitForRFDisable after %d attempts", _attempts);
+
                 return { Next::Error, 200, true };
             }
             return { Next::Stay, _delayWaitCfun0Ms, false };
@@ -76,6 +79,7 @@ ResetSim7000Modem::Result ResetSim7000Modem::step() {
             _attempts++;
             if (_attempts >= _retryLimit) {
                 _phase = Phase::Begin;
+                LOG_ERROR("Modem reset failed at WaitForRFEnable after %d attempts", _attempts);
                 return { Next::Error, 200, true };
             }
             return { Next::Stay, _delayWaitCfun1Ms, false };
@@ -85,11 +89,12 @@ ResetSim7000Modem::Result ResetSim7000Modem::step() {
             int r = _modem.waitResponse(_delayProbeAtMs);
             if (r == 1) {
                 _phase = Phase::Done;
-                return { Next::WaitForNetwork, 2000, false };
+                return { Next::WaitForNetwork, 200, false };
             }
             _attempts++;
             if (_attempts >= _retryLimit) {
                 _phase = Phase::Begin;
+                LOG_ERROR("Modem reset failed at ProbeAT after %d attempts", _attempts);
                 return { Next::Error, 200, true };
             }
             return { Next::Stay, _delayProbeAtMs, false };

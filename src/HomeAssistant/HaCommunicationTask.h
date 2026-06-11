@@ -10,6 +10,7 @@
 #include "ActiveQueue.h"
 #include "IntertaskDataModel.h"
 #include "SystemTimer.h"
+#include "WaitForSIM7000Init.h"
 
 
 
@@ -36,6 +37,7 @@ private:
     enum class ModemState {
         ModemPowerOn,
         InitSerial,
+        WaitForSIM7000Init,
         SoftwareRestartModem,
         WaitForNetwork,
         GprsConnect,
@@ -53,6 +55,7 @@ private:
     TinyGsmSim7000::GsmClientSim7000 tinyGsmClient;
     PubSubClient mqttClient;
     ResetSim7000Modem resetter;
+    WaitForSIM7000Init waitForSIM7000Init;
     WaitForNetworkMonitor waitForNetworkMonitor;
     MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1/telemetry"};
     MqttMeasurementsPublisher historyPublisher{mqttClient, "lacko/shl_c1/history"};
@@ -60,10 +63,10 @@ private:
     HaRunningMonitor runningMonitor{mqttClient, statusPublisher};
 
     ModemState _state = ModemState::ModemPowerOn;
-    uint8_t _errorGprsConnectCounter;
-    uint8_t _errorMqttConnectCounter;
-    uint8_t _errorModemSoftwareResetCounter;
-    uint8_t _hardwerModemReserCounter;
+    uint8_t _errorGprsConnectCounter = 0;
+    uint8_t _errorMqttConnectCounter = 0;
+    uint8_t _errorModemSoftwareResetCounter = 0;
+    uint8_t _hardwerModemReserCounter = 0;
 
 
     //const char* _apn = "internet";        // APN for Orange Poland/nju (SIM7000G), no username/password
@@ -80,6 +83,7 @@ private:
      // --- Handlers for each ModemState ---
     void handleModemPowerOn();
     void handleInitSerial();
+    void handleWaitForSIM7000Init();
     void handleSoftwareRestartModem();
     void handleWaitForNetwork();
     void handleGprsConnect();

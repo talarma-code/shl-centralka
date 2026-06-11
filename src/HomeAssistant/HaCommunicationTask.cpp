@@ -1,134 +1,153 @@
-#include  "HaCommunicationTask.h"
-#include  "MqttConfiguration.h"
-#include  "CommunicationParams.h"
-#include  "Log.h"
-#include  "IntertaskDataModel.h"
+#include "HaCommunicationTask.h"
+#include "MqttConfiguration.h"
+#include "CommunicationParams.h"
+#include "Log.h"
+#include "IntertaskDataModel.h"
 
 #include <sys/time.h>
 #include <time.h>
 #include "RTClib.h"
 
-#define MODEM_RX 13  // ESP32 RX -> TX modemu
-#define MODEM_TX 14  // ESP32 TX -> RX modemu
-#define HARDWARE_MODEM_NUMBER 2  
+#define MODEM_RX 13 // ESP32 RX -> TX modemu
+#define MODEM_TX 14 // ESP32 TX -> RX modemu
+#define HARDWARE_MODEM_NUMBER 2
 #define MODEM_POWER_PIN 4 // GPIO pin used to power on/off the modem (if needed)
 
 HaCommunicationTask::HaCommunicationTask(QueueHandle_t mainTaskQueueHandle) : ActiveTask("HaCommunicationTask", 10240, 3, 1),
-    haQueue(10), 
-    mainTaskQueue(mainTaskQueueHandle),
-    timer(1, 1000, SystemTimerT<SystemMessagePacket, TimerToSystemMessage>::Mode::OneShot, ActiveQueueRef<SystemMessagePacket>(haQueue.nativeHandle()), TimerToSystemMessage()),
-    hardwareModem (HARDWARE_MODEM_NUMBER), 
-    tinyGsmModem(hardwareModem), 
-    tinyGsmClient(tinyGsmModem),
-    mqttClient(tinyGsmClient),
-    resetter(tinyGsmModem),
-    waitForNetworkMonitor(tinyGsmModem)
+                                                                              haQueue(10),
+                                                                              mainTaskQueue(mainTaskQueueHandle),
+                                                                              timer(1, 1000, SystemTimerT<SystemMessagePacket, TimerToSystemMessage>::Mode::OneShot, ActiveQueueRef<SystemMessagePacket>(haQueue.nativeHandle()), TimerToSystemMessage()),
+                                                                              hardwareModem(HARDWARE_MODEM_NUMBER),
+                                                                              tinyGsmModem(hardwareModem),
+                                                                              tinyGsmClient(tinyGsmModem),
+                                                                              mqttClient(tinyGsmClient),
+                                                                              resetter(tinyGsmModem),
+                                                                              waitForSIM7000Init(tinyGsmModem),
+                                                                              waitForNetworkMonitor(tinyGsmModem)
 {
     _errorGprsConnectCounter = 0;
     _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
     _hardwerModemReserCounter = 0;
 
-    mqttClient.setKeepAlive(60);        // seconds
-    mqttClient.setSocketTimeout(30);    // seconds
-    mqttClient.setBufferSize(2048);     // większy bufor na ramki MQTT (temat + payload)
+    mqttClient.setKeepAlive(60);     // seconds
+    mqttClient.setSocketTimeout(30); // seconds
+    mqttClient.setBufferSize(2048);  // większy bufor na ramki MQTT (temat + payload)
 
     // Configure running monitor: 500 ms loop, check connection every 3 loops, heartbeat every 60 s
     runningMonitor.configure(500, 3, 60);
 }
 
-void HaCommunicationTask::setup() {
+void HaCommunicationTask::setup()
+{
     printf("HaCommunicationTask setup\r\n");
     pinMode(MODEM_POWER_PIN, OUTPUT);
     connectionManager(ModemState::ModemPowerOn);
 }
 
-
 void HaCommunicationTask::loop()
 {
     SystemMessagePacket msg;
-    if (haQueue.receive(msg)) {
-        if (msg.type == SystemDataType::Timer) {
+    if (haQueue.receive(msg))
+    {
+        if (msg.type == SystemDataType::Timer)
+        {
             connectionManager(_state);
         }
-        else if (msg.type == SystemDataType::Measurements || msg.type == SystemDataType::NotifyEspNowEvent) {
-            if (_state != ModemState::Running) {
-                LOG_INFO("Cannot publish, modem not running yeat");
-            } else if (!mqttClient.connected()) {
-                LOG_ERROR("MQTT disconnected, Measurements");
-                findReasonAndReconnect();
-            }
-            else {
-                if (msg.type == SystemDataType::Measurements) {
-                    if (!measPublisher.publishPacket(msg.payload.measurementData)) {
-                    LOG_ERROR("Publish measurement packet failed - reconnecting...");
-                    findReasonAndReconnect();
+        else if (msg.type == SystemDataType::Measurements || msg.type == SystemDataType::NotifyEspNowEvent)
+        {
+            if (_state == ModemState::Running)
+            {
+                if (msg.type == SystemDataType::Measurements)
+                {
+                    if (!measPublisher.publishPacket(msg.payload.measurementData))
+                    {
+                        LOG_ERROR("Publish measurement packet failed - reconnecting...");
+                        findReasonAndReconnect();
+                    }
                 }
-                    
-                } else if (msg.type == SystemDataType::NotifyEspNowEvent) {
-                    statusPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus);
+                else if (msg.type == SystemDataType::NotifyEspNowEvent)
+                {
+                    if (!statusPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus))
+                    {
+                        LOG_ERROR("Publish esp-now event failed - reconnecting...");
+                        findReasonAndReconnect();
+                    }
+                }
             }
-            }  
-            
-
-
-
+            else
+            {
+                LOG_INFO("Cannot publish, modem not running yet, GprsConnectCounter=%d, MqttConnectCounter=%d, ModemSoftwareResetCounter=%d, ModemHardwareResetCounter=%d",
+                         _errorGprsConnectCounter,
+                         _errorMqttConnectCounter,
+                         _errorModemSoftwareResetCounter,
+                         _hardwerModemReserCounter);
+            }
         }
-        else if (msg.type == SystemDataType::RtcSync) {
-            if (_state == ModemState::Running) {
+        else if (msg.type == SystemDataType::RtcSync)
+        {
+            if (_state == ModemState::Running)
+            {
                 uint32_t epoch = syncNetworkTime();
-                if(epoch != 0) {
+                if (epoch != 0)
+                {
                     ApplicationMessagePacket rtcSyncMsg{};
-                    rtcSyncMsg.type = ApplicationCommandType::RtcSync;  
+                    rtcSyncMsg.type = ApplicationCommandType::RtcSync;
                     rtcSyncMsg.payload.rtcSyncCommandPacket.epochTime = epoch;
                     mainTaskQueue.send(rtcSyncMsg);
                 }
-            } 
-            else {
-                LOG_INFO("Cannot sync RTC, modem not running yeat");
+            }
+            else
+            {
+                LOG_INFO("Cannot sync RTC, modem not running yet");
             }
         }
-        
     }
     resetWatchdog();
 }
 
-void HaCommunicationTask::connectionManager(ModemState s) {
-    switch (s) {
-        case ModemState::ModemPowerOn:
-            handleModemPowerOn();
-            break;
-        case ModemState::InitSerial:
-            handleInitSerial();
-            break;
-        case ModemState::SoftwareRestartModem:
-            handleSoftwareRestartModem();
-            break;
-        case ModemState::WaitForNetwork:
-            handleWaitForNetwork();
-            break;
-        case ModemState::GprsConnect:
-            handleGprsConnect();
-            break;
-        case ModemState::MqttConnect:
-            handleMqttConnect();
-            break;
-        case ModemState::PublishResetReason:
-            publishResetReason();
-            break;
-        case ModemState::Running:
-            handleRunning();
-            break;
-        case ModemState::Error:
-            handleError();
-            break;
-        default:
-            break;
+void HaCommunicationTask::connectionManager(ModemState s)
+{
+    switch (s)
+    {
+    case ModemState::ModemPowerOn:
+        handleModemPowerOn();
+        break;
+    case ModemState::InitSerial:
+        handleInitSerial();
+        break;
+    case ModemState::WaitForSIM7000Init:
+        handleWaitForSIM7000Init();
+        break;
+    case ModemState::SoftwareRestartModem:
+        handleSoftwareRestartModem();
+        break;
+    case ModemState::WaitForNetwork:
+        handleWaitForNetwork();
+        break;
+    case ModemState::GprsConnect:
+        handleGprsConnect();
+        break;
+    case ModemState::MqttConnect:
+        handleMqttConnect();
+        break;
+    case ModemState::PublishResetReason:
+        publishResetReason();
+        break;
+    case ModemState::Running:
+        handleRunning();
+        break;
+    case ModemState::Error:
+        handleError();
+        break;
+    default:
+        break;
     }
 }
 
 // --- Dedicated handlers for each ModemState ---
-void HaCommunicationTask::handleModemPowerOn() {
+void HaCommunicationTask::handleModemPowerOn()
+{
     LOG_INFO("Modem power ON");
     modemPowerOn();
     clearSoftwareErrorCounters();
@@ -137,105 +156,147 @@ void HaCommunicationTask::handleModemPowerOn() {
     timer.start(20000);
 }
 
-void HaCommunicationTask::handleInitSerial() {
-    
+void HaCommunicationTask::handleInitSerial()
+{
+
     hardwareModem.begin(57600, SERIAL_8N1, MODEM_RX, MODEM_TX);
     LOG_INFO("Serial started");
-    _state = ModemState::SoftwareRestartModem;
+    _state = ModemState::WaitForSIM7000Init;
     // Wait a bit longer before starting AT reset sequence
     timer.start(10000);
 }
 
-void HaCommunicationTask::handleSoftwareRestartModem() {
-    LOG_INFO("Restarting modem...");
-    const auto res = resetter.step();
-    switch (res.next) {
-        case ResetSim7000Modem::Next::Stay:
-            _state = ModemState::SoftwareRestartModem;
-            break;
-        case ResetSim7000Modem::Next::WaitForNetwork:
-            _state = ModemState::WaitForNetwork;
-            break;
-        case ResetSim7000Modem::Next::Error:
-            _state = ModemState::Error;
-            if (res.failed) {
-                _errorModemSoftwareResetCounter++;
-            }
-            break;
+void HaCommunicationTask::handleWaitForSIM7000Init() 
+{
+    LOG_INFO("Wait for SIM7000 initialization...");
+    const auto res = waitForSIM7000Init.step();
+    switch (res.next)
+    {
+    case WaitForSIM7000Init::Next::Stay:
+        _state = ModemState::WaitForSIM7000Init;
+        break;
+    case WaitForSIM7000Init::Next::Ready:
+        _state = ModemState::WaitForNetwork;
+        break;
+    case WaitForSIM7000Init::Next::Error:
+        _state = ModemState::Error;
+        if (res.failed)
+        {
+            _errorModemSoftwareResetCounter++;
+        }
+        break;
     }
     timer.start(res.delayMs);
 }
 
-void HaCommunicationTask::handleWaitForNetwork() {
-    
+void HaCommunicationTask::handleSoftwareRestartModem()
+{
+    LOG_INFO("Restarting modem...");
+    const auto res = resetter.step();
+    switch (res.next)
+    {
+    case ResetSim7000Modem::Next::Stay:
+        _state = ModemState::SoftwareRestartModem;
+        break;
+    case ResetSim7000Modem::Next::WaitForNetwork:
+        _state = ModemState::WaitForNetwork;
+        break;
+    case ResetSim7000Modem::Next::Error:
+        _state = ModemState::Error;
+        if (res.failed)
+        {
+            _errorModemSoftwareResetCounter++;
+        }
+        break;
+    }
+    timer.start(res.delayMs);
+}
+
+void HaCommunicationTask::handleWaitForNetwork()
+{
+
     LOG_INFO("Waiting for network (poll)...");
     const auto res = waitForNetworkMonitor.step();
     int signalQuality = 0;
-    switch (res.next) {
-        case WaitForNetworkMonitor::Next::Stay:
-            _state = ModemState::WaitForNetwork;
-            break;
-        case WaitForNetworkMonitor::Next::GprsConnect:
-            signalQuality = tinyGsmModem.getSignalQuality();
-            LOG_INFO("Network OK");
-            LOG_INFO("Signal strength: %d", signalQuality);
-             _state = ModemState::GprsConnect;
-            break;
-        case WaitForNetworkMonitor::Next::SoftwareRestartModem:
-            _state = ModemState::SoftwareRestartModem;
-            signalQuality = tinyGsmModem.getSignalQuality();
-            LOG_INFO("Go to software reset, signal strength: %d", signalQuality);
-            break;
+    switch (res.next)
+    {
+    case WaitForNetworkMonitor::Next::Stay:
+        _state = ModemState::WaitForNetwork;
+        break;
+    case WaitForNetworkMonitor::Next::GprsConnect:
+        signalQuality = tinyGsmModem.getSignalQuality();
+        LOG_INFO("Network OK");
+        LOG_INFO("Signal strength: %d", signalQuality);
+        _state = ModemState::GprsConnect;
+        break;
+    case WaitForNetworkMonitor::Next::SoftwareRestartModem:
+        _state = ModemState::SoftwareRestartModem;
+        signalQuality = tinyGsmModem.getSignalQuality();
+        LOG_INFO("Go to software reset, signal strength: %d", signalQuality);
+        break;
     }
     timer.start(res.delayMs);
 }
 
-void HaCommunicationTask::handleGprsConnect() {
+void HaCommunicationTask::handleGprsConnect()
+{
     LOG_INFO("Connecting to APN: %s", _apn);
-    if (tinyGsmModem.gprsConnect(_apn)) {
+    if (tinyGsmModem.gprsConnect(_apn))
+    {
         LOG_INFO("GPRS OK");
         _state = ModemState::MqttConnect;
         timer.start(100);
-    } else {
+    }
+    else
+    {
         LOG_INFO("GPRS connect failed, retrying...");
         _errorGprsConnectCounter++;
-        if (_errorGprsConnectCounter >= MAX_GPRS_CONNECT_ATTEMPTS) {
+        if (_errorGprsConnectCounter >= MAX_GPRS_CONNECT_ATTEMPTS)
+        {
             _state = ModemState::SoftwareRestartModem;
         }
         timer.start(2000);
     }
 }
 
-void HaCommunicationTask::handleMqttConnect() {
+void HaCommunicationTask::handleMqttConnect()
+{
     LOG_INFO("Attempting MQTT connect...");
     mqttClient.setServer(MQTT_HOST, MQTT_PORT);
     // Tune MQTT session for cellular link stability
-    //todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
-    if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS)) {
+    // todo: use setSocketTimeout() to set timeout for mqtt connect but only for broker, if gprs lost, will be waiting longer
+    if (mqttClient.connect("SIM7000Client01", MQTT_USER, MQTT_PASS))
+    {
         LOG_INFO("MQTT connected");
         clearSoftwareErrorCounters();
 
         _state = ModemState::PublishResetReason;
         timer.start(100);
-    } else {
+    }
+    else
+    {
         LOG_INFO("MQTT connect failed, rc=%d", mqttClient.state());
         _errorMqttConnectCounter++;
-        if (_errorMqttConnectCounter >= MAX_MQTT_CONNECT_ATTEMPTS) {
+        if (_errorMqttConnectCounter >= MAX_MQTT_CONNECT_ATTEMPTS)
+        {
             _state = ModemState::GprsConnect;
         }
         timer.start(500);
     }
 }
 
-void HaCommunicationTask::publishResetReason() {
+void HaCommunicationTask::publishResetReason()
+{
     LOG_INFO("Publishing reset reason...");
-    if (!mqttClient.connected()) {
+    if (!mqttClient.connected())
+    {
         LOG_ERROR("MQTT disconnected, cannot publish reset reason");
         findReasonAndReconnect();
         return;
     }
 
-    if (!statusPublisher.publishResetReason()) {
+    if (!statusPublisher.publishResetReason())
+    {
         LOG_ERROR("Publish reset reason failed, reconnecting...");
         findReasonAndReconnect();
         return;
@@ -243,16 +304,18 @@ void HaCommunicationTask::publishResetReason() {
     LOG_INFO("Reset reason published, moving to Running state");
 
     _state = ModemState::Running;
-     timer.start(100);
+    timer.start(100);
 
     LOG_INFO("Reset reason published successfully");
 }
 
-void HaCommunicationTask::handleRunning() {
+void HaCommunicationTask::handleRunning()
+{
     _hardwerModemReserCounter = 0;
 
     const auto res = runningMonitor.step();
-    if (res.next == HaRunningMonitor::Next::ReconnectNeeded) {
+    if (res.next == HaRunningMonitor::Next::ReconnectNeeded)
+    {
         LOG_ERROR("MQTT disconnected, state:handleRunning rc=%d", mqttClient.state());
         findReasonAndReconnect();
         return; // timer is started inside findReasonAndReconnect()
@@ -263,81 +326,101 @@ void HaCommunicationTask::handleRunning() {
     timer.start(res.delayMs);
 }
 
-void HaCommunicationTask::findReasonAndReconnect() {
-    if (!tinyGsmModem.isNetworkConnected()) {
+void HaCommunicationTask::findReasonAndReconnect()
+{
+    if (!tinyGsmModem.isNetworkConnected())
+    {
         _state = ModemState::WaitForNetwork;
         timer.start(200);
     }
-    else if (!tinyGsmModem.isGprsConnected()) {
+    else if (!tinyGsmModem.isGprsConnected())
+    {
         _state = ModemState::GprsConnect;
         timer.start(200);
     }
-    else {
+    else
+    {
         _state = ModemState::MqttConnect;
         timer.start(200);
     }
 }
 
-void HaCommunicationTask::handleError() {
+void HaCommunicationTask::handleError()
+{
+    LOG_ERROR("Modem state ERROR: hardware reset: %d", _hardwerModemReserCounter);
+    clearSoftwareErrorCounters();
     if (_hardwerModemReserCounter == 0)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_30_SECONDS);
+        return;
     }
+    
     if (_hardwerModemReserCounter == 1)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_3_MINUTEs);
+        return;
     }
+    
     if (_hardwerModemReserCounter == 2)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_5_MINUTEs);
+        return;
     }
+
     if (_hardwerModemReserCounter == 3)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_15_MINUTEs);
+        return;
     }
+
     if (_hardwerModemReserCounter >= 4 && _hardwerModemReserCounter < 8)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_30_MINUTEs);
+        return;
     }
+
     if (_hardwerModemReserCounter >= 8)
     {
         modemPowerOff();
         _state = ModemState::ModemPowerOn;
         timer.start(TIME_1_HOUR);
+        return;
     }
-
-    LOG_ERROR("Modem state ERROR: hardware reset: %d", _hardwerModemReserCounter);
-    clearSoftwareErrorCounters();
 }
 
-void HaCommunicationTask::modemPowerOff() {
+void HaCommunicationTask::modemPowerOff()
+{
     LOG_INFO("Powering off modem...");
+    hardwareModem.end();
     _hardwerModemReserCounter++;
-    digitalWrite(MODEM_POWER_PIN, LOW); 
+    digitalWrite(MODEM_POWER_PIN, LOW);
 }
 
-void HaCommunicationTask::modemPowerOn() {
+void HaCommunicationTask::modemPowerOn()
+{
     LOG_INFO("Powering on modem...");
-    digitalWrite(MODEM_POWER_PIN, HIGH); 
+    digitalWrite(MODEM_POWER_PIN, HIGH);
 }
 
-void HaCommunicationTask::clearSoftwareErrorCounters() {
+void HaCommunicationTask::clearSoftwareErrorCounters()
+{
     _errorGprsConnectCounter = 0;
     _errorMqttConnectCounter = 0;
     _errorModemSoftwareResetCounter = 0;
 }
 
-uint32_t HaCommunicationTask::syncNetworkTime() {
+uint32_t HaCommunicationTask::syncNetworkTime()
+{
     LOG_INFO("Synchronizing network time (TinyGSM +CCLK?)...");
 
     int year = 0;
@@ -349,31 +432,32 @@ uint32_t HaCommunicationTask::syncNetworkTime() {
     float timezone = 0.0f;
 
     bool ok = tinyGsmModem.getNetworkTime(&year, &month, &day, &hour, &minute, &second, &timezone);
-    if (ok) {
+    if (ok)
+    {
         // Convert to RTClib DateTime (timezone is returned separately by TinyGSM)
         DateTime dt(year, month, day, hour, minute, second);
         uint32_t localEpoch = dt.unixtime();
         int32_t timezoneSeconds = (timezone >= 0.0f)
-            ? static_cast<int32_t>(timezone * 3600.0f + 0.5f)
-            : static_cast<int32_t>(timezone * 3600.0f - 0.5f);
+                                      ? static_cast<int32_t>(timezone * 3600.0f + 0.5f)
+                                      : static_cast<int32_t>(timezone * 3600.0f - 0.5f);
         uint32_t utcEpoch = (timezoneSeconds >= 0)
-            ? (localEpoch > static_cast<uint32_t>(timezoneSeconds) ? localEpoch - static_cast<uint32_t>(timezoneSeconds) : 0)
-            : localEpoch + static_cast<uint32_t>(-timezoneSeconds);
+                                ? (localEpoch > static_cast<uint32_t>(timezoneSeconds) ? localEpoch - static_cast<uint32_t>(timezoneSeconds) : 0)
+                                : localEpoch + static_cast<uint32_t>(-timezoneSeconds);
 
         LOG_INFO("Network time read: %04d-%02d-%02d %02d:%02d:%02d (tz=%+.2f) localEpoch=%lu utcEpoch=%lu",
                  year, month, day, hour, minute, second, timezone,
                  static_cast<unsigned long>(localEpoch), static_cast<unsigned long>(utcEpoch));
         return utcEpoch;
-    } 
-    else {
+    }
+    else
+    {
         LOG_ERROR("Failed to get network time");
         return 0;
     }
 }
 
-
-//todo: issueses
-// 1. changne reset modem logic - use AT command instead of library 
-// 2. the same for gprs connect 
-// 3. add subscribe to mqtt topic and process incoming messages - ping each 60s to check mqtt connection
-//     3.1 when connect to mqtt failed , check ping. 
+// todo: issueses
+//  1. changne reset modem logic - use AT command instead of library
+//  2. the same for gprs connect
+//  3. add subscribe to mqtt topic and process incoming messages - ping each 60s to check mqtt connection
+//      3.1 when connect to mqtt failed , check ping.

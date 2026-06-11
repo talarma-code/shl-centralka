@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <driver/pcnt.h>
+#include <Preferences.h>
 
 class ORWE520PowerMeter {
 
