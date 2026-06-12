@@ -161,7 +161,9 @@ void HaCommunicationTask::handleInitSerial()
 
     hardwareModem.begin(57600, SERIAL_8N1, MODEM_RX, MODEM_TX);
     LOG_INFO("Serial started");
-    _state = ModemState::WaitForSIM7000Init;
+    //_state = ModemState::WaitForSIM7000Init;
+    //TODO this is temporary for test - use libe abouve 
+    _state = ModemState::SoftwareRestartModem;
     // Wait a bit longer before starting AT reset sequence
     timer.start(10000);
 }
@@ -180,10 +182,7 @@ void HaCommunicationTask::handleWaitForSIM7000Init()
         break;
     case WaitForSIM7000Init::Next::Error:
         _state = ModemState::Error;
-        if (res.failed)
-        {
-            _errorModemSoftwareResetCounter++;
-        }
+        _errorModemSoftwareResetCounter++;
         break;
     }
     timer.start(res.delayMs);
@@ -402,6 +401,8 @@ void HaCommunicationTask::modemPowerOff()
 {
     LOG_INFO("Powering off modem...");
     hardwareModem.end();
+    pinMode(MODEM_RX, INPUT);
+    pinMode(MODEM_TX, INPUT);
     _hardwerModemReserCounter++;
     digitalWrite(MODEM_POWER_PIN, LOW);
 }

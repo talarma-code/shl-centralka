@@ -1,6 +1,7 @@
 #pragma once
 #include <TinyGsmClientSIM7000.h>
 #include <stdint.h>
+#include "WaitForSIM7000Init.h"
 
 class ResetSim7000Modem {
 public:
@@ -14,7 +15,7 @@ public:
     };
 
     explicit ResetSim7000Modem(TinyGsmSim7000& modem)
-        : _modem(modem) {}
+        : _modem(modem), _waitForInit(modem) {}
 
     // One non-blocking step; returns what to do next and when
     Result step();
@@ -34,6 +35,7 @@ public:
 
 private:
     TinyGsmSim7000& _modem;
+    WaitForSIM7000Init _waitForInit;
     Phase _phase = Phase::Begin;
     uint8_t _attempts = 0;
 
