@@ -145,6 +145,7 @@ void ApplicationTask::loop() {
     if (Serial.available() > 0) {
         char characterRecived = Serial.read();   // Odczytaj 1 bajt
 
+        //section for debug espNow communication with heaterFsm
         if (characterRecived == 'o') {
             Serial.println("odebralem i wyslam ramke On");
             heaterFsm.sendCommand(true);
@@ -155,24 +156,40 @@ void ApplicationTask::loop() {
             heaterFsm.sendCommand(false);
             //action Off
         }
-        if (characterRecived == 'r') {
-            SystemMessagePacket drMsg;
-            drMsg.type = SystemDataType::RtcSync;
-            haQueueRef.send(drMsg);
-        }
 
-                if (characterRecived == 'd') {
+        if (characterRecived == 'd') {
             SystemDebuger::printSystemStats();
         }
-        
-
 
         if (characterRecived == 'R') {
+            Serial.println("test Rsync");
             SystemMessagePacket drMsg;
             drMsg.type = SystemDataType::RtcSync;
             haQueueRef.send(drMsg);
             _state = state::RtcSync;
         }
+
+        //for sim7000 modem test 
+        if (characterRecived == 's') {
+            Serial.println("Soft reset modem SIM7000");
+            SystemMessagePacket drMsg;
+            drMsg.type = SystemDataType::ServiceCommand;
+            drMsg.payload.serviceCommandData.command = ServiceCommandEnum::SoftwareResetModem;
+            haQueueRef.send(drMsg);
+        }
+
+        if (characterRecived == 'h') {
+            Serial.println("Hardware reset modem SIM7000");
+            SystemMessagePacket drMsg;
+            drMsg.type = SystemDataType::ServiceCommand;
+            drMsg.payload.serviceCommandData.command = ServiceCommandEnum::HardwareResetModem;
+            haQueueRef.send(drMsg);
+        }
+
+
+
+
+        //Modbus test section 
 
         if (characterRecived == '1') {
             float value;
@@ -187,7 +204,6 @@ void ApplicationTask::loop() {
             Serial.println(value);
         }
 
-        
         if (characterRecived == '3') {
             float power;
             sdm120ctPowerMeter.activePower(power, 0x01);

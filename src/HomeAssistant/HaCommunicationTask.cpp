@@ -102,6 +102,21 @@ void HaCommunicationTask::loop()
                 LOG_INFO("Cannot sync RTC, modem not running yet");
             }
         }
+        else if (msg.type == SystemDataType::ServiceCommand)
+        {
+            if (msg.payload.serviceCommandData.command == ServiceCommandEnum::SoftwareResetModem)
+            {
+                LOG_INFO("SERVICE MODE: Received command to reset modem");
+                _state = ModemState::SoftwareRestartModem;
+                timer.start(100);
+            }
+            if (msg.payload.serviceCommandData.command == ServiceCommandEnum::HardwareResetModem)
+            {
+                LOG_INFO("SERVICE MODE: Received command to hardware reset modem");
+                _state = ModemState::Error;
+                timer.start(100);
+            }
+        }
     }
     resetWatchdog();
 }
@@ -158,12 +173,9 @@ void HaCommunicationTask::handleModemPowerOn()
 
 void HaCommunicationTask::handleInitSerial()
 {
-
     hardwareModem.begin(57600, SERIAL_8N1, MODEM_RX, MODEM_TX);
     LOG_INFO("Serial started");
-    //_state = ModemState::WaitForSIM7000Init;
-    //TODO this is temporary for test - use libe abouve 
-    _state = ModemState::SoftwareRestartModem;
+    _state = ModemState::WaitForSIM7000Init;
     // Wait a bit longer before starting AT reset sequence
     timer.start(10000);
 }
