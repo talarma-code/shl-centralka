@@ -12,7 +12,7 @@ public:
 
 
 private:
-    static const uint8_t PULSE_PIN = 22;
+    static const uint8_t PULSE_PIN = 39; // Pin connected to the pulse output of the ORWE520 power meter
     static const pcnt_unit_t PCNT_UNIT = PCNT_UNIT_0;
     static const float POWER_MULTIPLY;      // Converts pulses to kW
     static const float ENERGY_MULTIPLY;     // Converts pulses to kWh

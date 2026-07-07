@@ -266,30 +266,6 @@ void ApplicationTask::handlePacket(const ShlProtocolWithMacAddress &pkt) {
 // Idle	0	system
 
 
-MeasurementDataPacket ApplicationTask::generateRandomMeasurement() {
-    static bool seeded = false;
-    if (!seeded) {
-        randomSeed((uint32_t)esp_random());
-        seeded = true;
-    }
-
-    MeasurementDataPacket m{};
-    m.timestamp = (uint32_t)(millis() / 1000UL);
-
-    m.L1Power = (uint32_t)random(0, 4001);
-    m.L2Power = (uint32_t)random(0, 4001);
-    m.HeaterPower = (uint32_t)random(0, 3001);
-    m.HomeTotalPower = m.L1Power + m.L2Power + m.HeaterPower;
-
-    m.L1Voltage_x10 = (uint16_t)random(2150, 2461);
-    m.L2Voltage_x10 = (uint16_t)random(2150, 2461);
-
-    m.HeaterEnableForSeconds = (uint16_t)random(0, 601);
-    m.measurementType = MeasurementDataType::Now;
-
-    return m;
-}
-
 void ApplicationTask::handleIdleState(ApplicationMessagePacket evt) {
     if (evt.type == ApplicationCommandType::Timer) {
         if (is23Pm()) {

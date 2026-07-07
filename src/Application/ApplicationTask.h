@@ -30,7 +30,6 @@ public:
 private:
     static const uint32_t APPLICATION_SYSTEM_TIMER_ID = 1;
 
-    MeasurementDataPacket generateRandomMeasurement();
     void setupSystemTime(); 
 
     enum state {
