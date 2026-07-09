@@ -54,10 +54,10 @@ struct SystemEventPacket {
 struct MeasurementDataPacket {
     uint32_t timestamp;
 
-    uint32_t L1Power;
-    uint32_t L2Power;
-    uint32_t HeaterPower;
-    uint32_t HomeTotalPower;
+    uint32_t L1EnergyProduced;
+    uint32_t L2EnergyProduced;
+    uint32_t HeaterEnergyConsumed;
+    uint32_t HomeTotalEnergyConsumed;
 
     uint16_t L1Voltage_x10; 
     uint16_t L2Voltage_x10;

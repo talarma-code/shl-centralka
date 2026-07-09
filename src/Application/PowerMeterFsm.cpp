@@ -132,40 +132,40 @@ void PowerMeterFsm::getVoltage(MeasurementData &data) {
 
 void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, uint32_t l2TotalEnergyWh, uint32_t homeTotalEnergyWh, MeasurementData &data) {
    
-    if (_l1TotalPower == 0) {
-        data.L1Power = 0;
-        data.L1TotalPower = l1TotalEnergyWh;
-        _l1TotalPower = l1TotalEnergyWh;
+    if (_l1TotalEnergy == 0) {
+        data.L1EnergyInLastTimeWindow = 0;
+        data.L1TotalEnergy = l1TotalEnergyWh;
+        _l1TotalEnergy = l1TotalEnergyWh;
     } else {
-        data.L1Power = l1TotalEnergyWh - _l1TotalPower;
-        _l1TotalPower = l1TotalEnergyWh ;
-        data.L1TotalPower = _l1TotalPower;
+        data.L1EnergyInLastTimeWindow = l1TotalEnergyWh - _l1TotalEnergy;
+        _l1TotalEnergy = l1TotalEnergyWh ;
+        data.L1TotalEnergy = _l1TotalEnergy;
     }
-    if (_l2TotalPower == 0) {
-        data.L2Power = 0;
-        data.L2TotalPower = l2TotalEnergyWh;
-        _l2TotalPower = l2TotalEnergyWh;
+    if (_l2TotalEnergy == 0) {
+        data.L2EnergyInLastTimeWindow = 0;
+        data.L2TotalEnergy = l2TotalEnergyWh;
+        _l2TotalEnergy = l2TotalEnergyWh;
     } else {
-        data.L2Power = l2TotalEnergyWh - _l2TotalPower;
-        _l2TotalPower = l2TotalEnergyWh;
-        data.L2TotalPower = _l2TotalPower;
+        data.L2EnergyInLastTimeWindow = l2TotalEnergyWh - _l2TotalEnergy;
+        _l2TotalEnergy = l2TotalEnergyWh;
+        data.L2TotalEnergy = _l2TotalEnergy;
     }
 
     //TODO logic for home - check it !!
-    if (_homeTotalPower == 0) {
-        data.HomePower = 0;
-        data.HomeTotalPower = homeTotalEnergyWh;
-        _homeTotalPower = homeTotalEnergyWh;
+    if (_homeTotalEnergy == 0) {
+        data.HomeEnergyInLastTimeWindow = 0;
+        data.HomeTotalEnergy = homeTotalEnergyWh;
+        _homeTotalEnergy = homeTotalEnergyWh;
     } else {
-        data.HomePower = homeTotalEnergyWh - _homeTotalPower;
-        _homeTotalPower = homeTotalEnergyWh;
-        data.HomeTotalPower = _homeTotalPower;
+        data.HomeEnergyInLastTimeWindow = homeTotalEnergyWh - _homeTotalEnergy;
+        _homeTotalEnergy = homeTotalEnergyWh;
+        data.HomeTotalEnergy = _homeTotalEnergy;
     }
 
 
     LOG_INFO("Powers - L1: %u Wh, L2: %u Wh, Home: %u Wh | Totals - L1: %u Wh, L2: %u Wh, Home: %u Wh", 
-             data.L1Power, data.L2Power, data.HomePower, 
-             data.L1TotalPower, data.L2TotalPower, data.HomeTotalPower);
+             data.L1EnergyInLastTimeWindow, data.L2EnergyInLastTimeWindow, data.HomeEnergyInLastTimeWindow, 
+             data.L1TotalEnergy, data.L2TotalEnergy, data.HomeTotalEnergy);
 }
 
 

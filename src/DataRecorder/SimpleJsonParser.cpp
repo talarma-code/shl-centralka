@@ -11,7 +11,7 @@ StaticString192 SimpleJsonParser::serializeMeasurement(const MeasurementDataPack
     StaticString32 ts = formatIsoTimestamp(m.timestamp);
     char buf[128];
     int n = snprintf(buf, sizeof(buf), "{\"timestamp\":\"%s\",\"L1Power\":%u,\"L2Power\":%u,\"HeaterPower\":%u,\"HomeTotalPower\":%u,\"L1Voltage_x10\":%u,\"L2Voltage_x10\":%u}",
-        ts.c_str(), (unsigned)m.L1Power, (unsigned)m.L2Power, (unsigned)m.HeaterPower, (unsigned)m.HomeTotalPower,
+        ts.c_str(), (unsigned)m.L1EnergyProduced, (unsigned)m.L2EnergyProduced, (unsigned)m.HeaterEnergyConsumed, (unsigned)m.HomeTotalEnergyConsumed,
         (unsigned)m.L1Voltage_x10, (unsigned)m.L2Voltage_x10);
     StaticString192 s;
     if (n > 0) s.assign(buf); else s.clear();
@@ -46,10 +46,10 @@ bool SimpleJsonParser::deserializeMeasurement(const StaticString192& json, Measu
     if (!parseIsoTimestamp(tsStr, epoch)) return false;
     out.timestamp = epoch;
 
-    out.L1Power = extractUInt("\"L1Power\"");
-    out.L2Power = extractUInt("\"L2Power\"");
-    out.HeaterPower = extractUInt("\"HeaterPower\"");
-    out.HomeTotalPower = extractUInt("\"HomeTotalPower\"");
+    out.L1EnergyProduced = extractUInt("\"L1TotalEnergy\"");
+    out.L2EnergyProduced = extractUInt("\"L2TotalEnergy\"");
+    out.HeaterEnergyConsumed = extractUInt("\"HeaterEnergyConsumed\"");
+    out.HomeTotalEnergyConsumed = extractUInt("\"HomeTotalEnergyConsumed\"");
     out.L1Voltage_x10 = (uint16_t)extractUInt("\"L1Voltage_x10\"");
     out.L2Voltage_x10 = (uint16_t)extractUInt("\"L2Voltage_x10\"");
 

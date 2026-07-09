@@ -413,9 +413,9 @@ DateTime ApplicationTask::getSystemDateTime() {
 
 void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, bool heaterStatus) {
     lastMeasurementData.timestamp = (uint32_t)(millis() / 1000UL);
-    lastMeasurementData.L1Power = data.L1TotalPower;
-    lastMeasurementData.L2Power = data.L2TotalPower;
-    lastMeasurementData.HomeTotalPower = data.HomeTotalPower;
+    lastMeasurementData.L1EnergyProduced = data.L1TotalEnergy;
+    lastMeasurementData.L2EnergyProduced = data.L2TotalEnergy;
+    lastMeasurementData.HomeTotalEnergyConsumed = data.HomeTotalEnergy;
     lastMeasurementData.L1Voltage_x10 = data.L1Voltage_x10;
     lastMeasurementData.L2Voltage_x10 = data.L2Voltage_x10;
     lastMeasurementData.heaterRequestedStatus = heaterStatus ? HeaterStatus::On : HeaterStatus::Off;
@@ -423,9 +423,9 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
 }   
 
 void ApplicationTask::calculateHeaterStatus(const MeasurementData& data) {
-    LOG_INFO("Calculating heater status with data: L1Power=%u W, L1TotalPower=%u W, L2Power=%u W, L2TotalPower=%u W, HomePower=%u W", data.L1Power, data.L1TotalPower, data.L2Power, data.L2TotalPower, data.HomePower);
+    LOG_INFO("Calculating heater status with data: L1Power=%u W, L1TotalEnergy=%u W, L2Power=%u W, L2TotalEnergy=%u W, HomePower=%u W", data.L1EnergyInLastTimeWindow, data.L1TotalEnergy, data.L2EnergyInLastTimeWindow, data.L2TotalEnergy, data.HomeEnergyInLastTimeWindow);
     
-    bool heaterRequestedState = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1Power, data.L2Power, data.HomePower);
+    bool heaterRequestedState = hourlySurplusAlgorithm.calculatePower(getSystemDateTime(), data.L1EnergyInLastTimeWindow, data.L2EnergyInLastTimeWindow, data.HomeEnergyInLastTimeWindow);
     LOG_INFO("Heater requested state: %s", heaterRequestedState ? "ON" : "OFF");
     heaterFsm.setHeaterState(heaterRequestedState);
     collectDataForHaNotification(data, heaterRequestedState);

@@ -4,7 +4,7 @@
 #include <PubSubClient.h>
 #include "ResetSim7000Modem.h"
 #include "WaitForNetworkMonitor.h"
-#include "MqttMeasurementsPublisher.h"
+#include "MqttPublisher.h"
 #include "HaRunningMonitor.h"
 #include "ActiveTask.h"
 #include "ActiveQueue.h"
@@ -57,10 +57,8 @@ private:
     ResetSim7000Modem resetter;
     WaitForSIM7000Init waitForSIM7000Init;
     WaitForNetworkMonitor waitForNetworkMonitor;
-    MqttMeasurementsPublisher measPublisher{mqttClient, "lacko/shl_c1/telemetry"};
-    MqttMeasurementsPublisher historyPublisher{mqttClient, "lacko/shl_c1/history"};
-    MqttMeasurementsPublisher statusPublisher{mqttClient, "lacko/shl_c1/status"};
-    HaRunningMonitor runningMonitor{mqttClient, statusPublisher};
+    MqttPublisher mqttPublisher{mqttClient};
+    HaRunningMonitor runningMonitor{mqttClient, mqttPublisher};
 
     ModemState _state = ModemState::ModemPowerOn;
     uint8_t _errorGprsConnectCounter = 0;

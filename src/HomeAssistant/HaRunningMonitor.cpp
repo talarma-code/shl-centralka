@@ -1,5 +1,5 @@
 #include "HaRunningMonitor.h"
-#include "MqttMeasurementsPublisher.h"
+#include "MqttPublisher.h"
 #include "TimeUtils.h"
 #include "Log.h"
 
@@ -45,7 +45,7 @@ bool HaRunningMonitor::publishHeartbeat(uint32_t epoch) {
         return false;
     }
 
-    // Delegate topic and payload construction to MqttMeasurementsPublisher
+    // Delegate topic and payload construction to MqttPublisher
     _client.loop();
     bool ok = _statusPublisher.publishOnlineHeartbeat(epoch);
     if (!ok) {

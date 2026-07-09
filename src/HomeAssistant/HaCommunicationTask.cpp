@@ -60,7 +60,7 @@ void HaCommunicationTask::loop()
             {
                 if (msg.type == SystemDataType::Measurements)
                 {
-                    if (!measPublisher.publishPacket(msg.payload.measurementData))
+                    if (!mqttPublisher.publishPacket(msg.payload.measurementData))
                     {
                         LOG_ERROR("Publish measurement packet failed - reconnecting...");
                         findReasonAndReconnect();
@@ -68,7 +68,7 @@ void HaCommunicationTask::loop()
                 }
                 else if (msg.type == SystemDataType::NotifyEspNowEvent)
                 {
-                    if (!statusPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus))
+                    if (!mqttPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus))
                     {
                         LOG_ERROR("Publish esp-now event failed - reconnecting...");
                         findReasonAndReconnect();
@@ -306,7 +306,7 @@ void HaCommunicationTask::publishResetReason()
         return;
     }
 
-    if (!statusPublisher.publishResetReason())
+    if (!mqttPublisher.publishResetReason())
     {
         LOG_ERROR("Publish reset reason failed, reconnecting...");
         findReasonAndReconnect();

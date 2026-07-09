@@ -40,9 +40,9 @@ private:
     ORWE520PowerMeter orwe520PowerMeter;
     SDM120CTPowerMeter sdm120ctPowerMeter;
 
-    uint32_t _l1TotalPower = 0;
-    uint32_t _l2TotalPower = 0;
-    uint32_t _homeTotalPower = 0;
+    uint32_t _l1TotalEnergy = 0;
+    uint32_t _l2TotalEnergy = 0;
+    uint32_t _homeTotalEnergy = 0;
 
     uint32_t _retryCounter = 0;
     uint32_t _resetCounter = 0;

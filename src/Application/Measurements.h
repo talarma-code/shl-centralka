@@ -2,13 +2,13 @@
 #include <Arduino.h>
 
 struct MeasurementData {
-    uint32_t L1Power;
-    uint32_t L2Power;
-    uint32_t HomePower;
+    uint32_t L1EnergyInLastTimeWindow;
+    uint32_t L2EnergyInLastTimeWindow;
+    uint32_t HomeEnergyInLastTimeWindow;
 
-    uint32_t L1TotalPower;
-    uint32_t L2TotalPower;
-    uint32_t HomeTotalPower;
+    uint32_t L1TotalEnergy;
+    uint32_t L2TotalEnergy;
+    uint32_t HomeTotalEnergy;
 
     uint16_t L1Voltage_x10; 
     uint16_t L2Voltage_x10;

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <PubSubClient.h>
 
-class MqttMeasurementsPublisher;
+class MqttPublisher;
 
 class HaRunningMonitor {
 public:
@@ -14,7 +14,7 @@ public:
         uint16_t delayMs;
     };
 
-    HaRunningMonitor(PubSubClient& client, MqttMeasurementsPublisher& statusPublisher)
+    HaRunningMonitor(PubSubClient& client, MqttPublisher& statusPublisher)
 	    : _client(client), _statusPublisher(statusPublisher) {}
 
     // Configure intervals (in milliseconds and seconds)
@@ -45,7 +45,7 @@ private:
     bool publishHeartbeat(uint32_t epoch);
 
     PubSubClient& _client;
-    MqttMeasurementsPublisher& _statusPublisher;
+    MqttPublisher& _statusPublisher;
 
     uint16_t _loopIntervalMs = 500;     // interval between loop() calls
     uint8_t  _loopsBeforeCheck = 3;     // how many loops before connection check

@@ -3,6 +3,7 @@
 #include "ResetReason.h"
 #include "Log.h"
 
+//depricated, use MqttPublisher instead
 bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     // Reset counters for this packet so that we can decide
     _publishSuccessCount = 0;
@@ -10,10 +11,10 @@ bool MqttMeasurementsPublisher::publishPacket(const MeasurementDataPacket& m) {
     _client.loop();         //this is cricial to keep connection alive and avoid publish failures
     delay(60);              //this is cricial to keep connection alive and avoid publish failures
 
-    publishUint("power/l1", m.L1Power);
-    publishUint("power/l2", m.L2Power);
-    publishUint("power/heater", m.HeaterPower);
-    publishUint("power/home_total", m.HomeTotalPower);
+    publishUint("power/l1", m.L1EnergyProduced);
+    publishUint("power/l2", m.L2EnergyProduced);
+    publishUint("power/heater", m.HeaterEnergyConsumed);
+    publishUint("power/home_total", m.HomeTotalEnergyConsumed);
 
     publishTopicPayload("voltage/l1", formatVoltageString(m.L1Voltage_x10).c_str());
     publishTopicPayload("voltage/l2", formatVoltageString(m.L2Voltage_x10).c_str());
