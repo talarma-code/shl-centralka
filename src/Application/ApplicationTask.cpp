@@ -418,6 +418,11 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
     lastMeasurementData.HomeTotalEnergyConsumed = data.HomeTotalEnergy;
     lastMeasurementData.L1Voltage_x10 = data.L1Voltage_x10;
     lastMeasurementData.L2Voltage_x10 = data.L2Voltage_x10;
+
+    lastMeasurementData.L1PowerW = data.L1PowerW;
+    lastMeasurementData.L2PowerW = data.L2PowerW;
+    lastMeasurementData.HomePowerW = data.HomePowerW;
+    
     lastMeasurementData.heaterRequestedStatus = heaterStatus ? HeaterStatus::On : HeaterStatus::Off;
     lastMeasurementData.measurementType = MeasurementDataType::Now;
 }   

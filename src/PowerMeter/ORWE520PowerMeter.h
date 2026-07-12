@@ -19,7 +19,7 @@ private:
     static const uint16_t PULSES_PER_KWH;
     
     uint32_t _totalPulseCount = 0;
-    float _lastEnergyKWh = 0.0f;
+    float _lastStoredInNvsEnergyKWh = 0.0f;
 
     void saveEnergyToNvs(float meterEnergyFromSd); 
     float loadEnergyFromNvs();

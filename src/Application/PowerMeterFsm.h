@@ -44,6 +44,9 @@ private:
     uint32_t _l2TotalEnergy = 0;
     uint32_t _homeTotalEnergy = 0;
 
+    // Timestamp of last successful measurement (millis())
+    uint32_t _lastMeasurementMs = 0;
+
     uint32_t _retryCounter = 0;
     uint32_t _resetCounter = 0;
     uint32_t _l1ReadErrorCount = 0;

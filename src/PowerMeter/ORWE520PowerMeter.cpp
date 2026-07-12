@@ -1,5 +1,6 @@
 #include <Preferences.h>
 #include "ORWE520PowerMeter.h"
+#include "NvsManager.h"
 #include "Log.h"
 
 // Static constant definitions
@@ -8,7 +9,7 @@ const float ORWE520PowerMeter::ENERGY_MULTIPLY = 0.00125f;
 const uint16_t ORWE520PowerMeter::PULSES_PER_KWH = 800; // 800 pulses per kWh based on meter specifications
 
 
-const char* NVS_NAMESPACE = "meter";
+const char* NVS_NAMESPACE = "power_meter";
 const char* NVS_KEY_TOTAL_ENERGY = "total_energy";
 
 void ORWE520PowerMeter::setup(float meterEnergyFromSd)
@@ -42,26 +43,28 @@ void ORWE520PowerMeter::setup(float meterEnergyFromSd)
     // Resume counter
     pcnt_counter_resume(PCNT_UNIT);
 
-    _lastEnergyKWh = 0.0f;
+    _lastStoredInNvsEnergyKWh = 0.0f;
     _totalPulseCount = 0;
 
-    if (meterEnergyFromSd > 0.0f)
+    NvsManager::init(true); // Initialize NVS without erasing existing data
+
+    // Load last energy from NVS for calibration if available
+    float lastEnergyFromNvs = loadEnergyFromNvs();
+
+    if (meterEnergyFromSd > lastEnergyFromNvs)
     {
         // If current energy is provided, calculate the corresponding pulse count for calibration
         _totalPulseCount = static_cast<uint32_t>(meterEnergyFromSd * PULSES_PER_KWH);
-        _lastEnergyKWh = meterEnergyFromSd;
         saveEnergyToNvs(meterEnergyFromSd);
         LOG_INFO("Calibrating power meter from SD, energy: %.2f kWh, pulses %u ", meterEnergyFromSd, _totalPulseCount);
     }
     else 
     {
-        // Load last energy from NVS for calibration if available
-        float lastEnergy = loadEnergyFromNvs();
-        if (lastEnergy > 0.0f)
+        if (lastEnergyFromNvs > 0.0f)
         {
-            _totalPulseCount = static_cast<uint32_t>(lastEnergy * PULSES_PER_KWH);
-            _lastEnergyKWh = lastEnergy;
-            LOG_INFO("Calibrating power meter from NVS, energy: %.2f kWh, pulses %u ", lastEnergy, _totalPulseCount);
+            _totalPulseCount = static_cast<uint32_t>(lastEnergyFromNvs * PULSES_PER_KWH);
+            _lastStoredInNvsEnergyKWh = lastEnergyFromNvs;
+            LOG_INFO("Calibrating power meter from NVS, energy: %.2f kWh, pulses %u ", lastEnergyFromNvs, _totalPulseCount);
         }
     }
     LOG_INFO("ORWE520 Hardware Pulse Counter initialized on GPIO %d", PULSE_PIN);
@@ -83,11 +86,10 @@ float ORWE520PowerMeter::totalEnergyKWh()
     // Round to 3 decimal places for accuracy
     energyKWh = round(energyKWh * 1000.0f) / 1000.0f;
 
-    if (energyKWh >= _lastEnergyKWh + 1.0f)
+    if (energyKWh >= _lastStoredInNvsEnergyKWh + 0.1f)     //store each 100Wh
     {
         saveEnergyToNvs(energyKWh);
     }
-    _lastEnergyKWh = energyKWh;
     return energyKWh;
 }
 
@@ -104,6 +106,7 @@ void ORWE520PowerMeter::saveEnergyToNvs(float meterEnergyFromSd)
         preferences.putFloat(NVS_KEY_TOTAL_ENERGY, meterEnergyFromSd);
         preferences.end();
         LOG_INFO("Saved last energy %.2f kWh to NVS", meterEnergyFromSd);
+        _lastStoredInNvsEnergyKWh = meterEnergyFromSd;
     }
     else
     {
@@ -116,7 +119,7 @@ float ORWE520PowerMeter::loadEnergyFromNvs()
 {
     Preferences preferences;
     float energy = 0.0f;
-    if (preferences.begin(NVS_NAMESPACE, true))
+    if (preferences.begin(NVS_NAMESPACE, false))
     {
         energy = preferences.getFloat(NVS_KEY_TOTAL_ENERGY, 0.0f);
         preferences.end();

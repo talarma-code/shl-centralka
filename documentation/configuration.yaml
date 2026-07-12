@@ -1,0 +1,189 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+influxdb:
+  api_version: 2
+  host: 127.0.0.1
+  port: 8086
+  token: supertalardmin
+  organization: homeassistant
+  bucket: ha
+  ssl: false
+  verify_ssl: false
+
+template:
+  - binary_sensor:
+      - name: "Centrala online"
+        unique_id: centrala_online
+        state: >
+          {% set ts = states('sensor.centrala_last_seen') | as_datetime %}
+          {{ ts is not none and (now() - ts).total_seconds() < 600 }}
+  - sensor:
+      - name: "Energia wyprodukowana PV"
+        unique_id: energia_wyprodukowana_pv
+        unit_of_measurement: "Wh"
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {{
+            states('sensor.energia_wyprodukowana_l1') | float(0) +
+            states('sensor.energia_wyprodukowana_l2') | float(0)
+          }}
+      - name: "Energia oddana do sieci"
+        unique_id: energia_oddana_do_sieci
+        unit_of_measurement: "Wh"
+        device_class: energy
+        state_class: total_increasing
+        state: >
+          {{
+            [
+              (
+                states('sensor.energia_wyprodukowana_pv') | float(0)
+                -
+                states('sensor.energia_pobrana_dom') | float(0)
+              ),
+              0
+            ] | max
+          }}
+      - name: "PV moc chwilowa"
+        unique_id: pv_moc_chwilowa
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{
+            states('sensor.moc_chwilowa_wyprodukowana_l1') | float(0) +
+            states('sensor.moc_chwilowa_wyprodukowana_l2') | float(0)
+          }}
+      - name: "Bilans mocy"
+        unique_id: bilans_mocy
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{
+            states('sensor.moc_chwilowa_pobrana_dom') | float(0) +
+            states('sensor.pv_moc_chwilowa') | float(0)
+          }}
+          
+      
+
+mqtt:
+  sensor:
+    - name: "Energia wyprodukowana L1"
+      unique_id: energia_wyprodukowana_l1
+      state_topic: "lacko/shl_c1/telemetry/power/l1"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      value_template: "{{ value | float }}"
+
+    - name: "Energia wyprodukowana L2"
+      unique_id: energia_wyprodukowana_l2
+      state_topic: "lacko/shl_c1/telemetry/power/l2"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      value_template: "{{ value | float }}"
+
+    - name: "Energia pobrana grzałka"
+      unique_id: energia_pobrana_grzalka
+      state_topic: "lacko/shl_c1/telemetry/power/heater"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      value_template: "{{ value | float }}"
+
+    - name: "Energia pobrana dom"
+      unique_id: energia_pobrana_dom
+      state_topic: "lacko/shl_c1/telemetry/power/home_total"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      value_template: "{{ value | float }}"
+
+    - name: "Moc chwilowa wyprodukowana L1"
+      unique_id: moc_chwilowa_wyprodukowana_l1
+      state_topic: "lacko/shl_c1/telemetry/power/L1PowerW"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      value_template: "{{ value | float }}"
+
+    - name: "Moc chwilowa wyprodukowana L2"
+      unique_id: moc_chwilowa_wyprodukowana_l2
+      state_topic: "lacko/shl_c1/telemetry/power/L2PowerW"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      value_template: "{{ value | float }}"
+
+    - name: "Moc chwilowa pobrana dom"
+      unique_id: moc_chwilowa_pobrana_dom
+      state_topic: "lacko/shl_c1/telemetry/power/HomePowerW"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      value_template: "{{ value | float }}"
+
+    - name: "Napięcie faza L1"
+      unique_id: napiecie_faza_l1
+      state_topic: "lacko/shl_c1/telemetry/voltage/l1"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Napięcie faza L2"
+      unique_id: napiecie_faza_l2
+      state_topic: "lacko/shl_c1/telemetry/voltage/l2"
+      unit_of_measurement: "V"
+      device_class: voltage
+      state_class: measurement
+
+    - name: "Centrala – last seen"
+      unique_id: centrala_last_seen
+      state_topic: "lacko/shl_c1/status/online"
+      device_class: timestamp
+
+    - name: "Reset reason"
+      unique_id: centrala_reset_reason
+      state_topic: "lacko/shl_c1/status/reason"
+      icon: mdi:restart-alert
+
+    - name: "Reset code"
+      unique_id: centrala_reset_code
+      state_topic: "lacko/shl_c1/status/code"
+      icon: mdi:numeric
+
+    - name: "Status komunikacji z grzałką"
+      unique_id: status_komunikacji_grzalka
+      state_topic: "lacko/shl_c1/status/espnow"
+      icon: mdi:wifi
+
+    - name: "Stan grzałki"
+      unique_id: stan_grzalki
+      state_topic: "lacko/shl_c1/telemetry/heater/requested_status"
+      icon: mdi:radiator
+
+    - name: "Czas pracy grzałki"
+      unique_id: czas_pracy_grzalki
+      state_topic: "lacko/shl_c1/telemetry/heater/enable_seconds"
+      unit_of_measurement: "s"
+      device_class: duration
+      state_class: measurement
+
+  binary_sensor:
+    - name: "Stan grzałki"
+      state_topic: "lacko/shl_c1/telemetry/heater/requested_status"
+      payload_on: "On"
+      payload_off: "Off"
+      device_class: heat
+      icon: mdi:radiator

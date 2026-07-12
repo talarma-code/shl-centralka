@@ -15,6 +15,7 @@ DataRecorderTask dataRecorderTask;
 ApplicationTask application(mainTaskQueue.nativeHandle(), haCommunicationTask.getQueueHandle(), dataRecorderTask.recordQueue());
 
 void setup() {
+  
 
   // Enable watchdog monitoring for selected FreeRTOS tasks
   application.enableWatchdog(true);

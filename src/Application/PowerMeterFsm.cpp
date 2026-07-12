@@ -8,7 +8,7 @@
 PowerMeterFsm::PowerMeterFsm() : orwe520PowerMeter(), sdm120ctPowerMeter() {}
 
 void PowerMeterFsm::setup() {
-    orwe520PowerMeter.setup();
+    orwe520PowerMeter.setup(236.46f); // Initialize ORWE520 power meter with current energy value
     sdm120ctPowerMeter.setup();
 }
 
@@ -131,7 +131,13 @@ void PowerMeterFsm::getVoltage(MeasurementData &data) {
 }   
 
 void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, uint32_t l2TotalEnergyWh, uint32_t homeTotalEnergyWh, MeasurementData &data) {
-   
+    // capture current time and compute delta from last measurement
+    const uint32_t nowMs = millis();
+    uint32_t deltaMs = 0;
+    if (_lastMeasurementMs != 0) {
+        deltaMs = nowMs - _lastMeasurementMs; // unsigned wrap-safe
+    }
+
     if (_l1TotalEnergy == 0) {
         data.L1EnergyInLastTimeWindow = 0;
         data.L1TotalEnergy = l1TotalEnergyWh;
@@ -151,7 +157,7 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, 
         data.L2TotalEnergy = _l2TotalEnergy;
     }
 
-    //TODO logic for home - check it !!
+    // home energy
     if (_homeTotalEnergy == 0) {
         data.HomeEnergyInLastTimeWindow = 0;
         data.HomeTotalEnergy = homeTotalEnergyWh;
@@ -162,10 +168,23 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, 
         data.HomeTotalEnergy = _homeTotalEnergy;
     }
 
+    // compute average power (W) = E_Wh / (delta_hours) = E_Wh * 3600000 / deltaMs
+    if (deltaMs == 0) {
+        data.L1PowerW = 0;
+        data.L2PowerW = 0;
+        data.HomePowerW = 0;
+    } else {
+        data.L1PowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.L1EnergyInLastTimeWindow) * 3600000) / deltaMs);
+        data.L2PowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.L2EnergyInLastTimeWindow) * 3600000) / deltaMs);
+        data.HomePowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.HomeEnergyInLastTimeWindow) * 3600000) / deltaMs);
+    }
 
-    LOG_INFO("Powers - L1: %u Wh, L2: %u Wh, Home: %u Wh | Totals - L1: %u Wh, L2: %u Wh, Home: %u Wh", 
+    _lastMeasurementMs = nowMs;
+
+    LOG_INFO("Powers - L1: %u Wh, L2: %u Wh, Home: %u Wh | Totals - L1: %u Wh, L2: %u Wh, Home: %u Wh | InstPower - L1: %u W, L2: %u W, Home: %u W", 
              data.L1EnergyInLastTimeWindow, data.L2EnergyInLastTimeWindow, data.HomeEnergyInLastTimeWindow, 
-             data.L1TotalEnergy, data.L2TotalEnergy, data.HomeTotalEnergy);
+             data.L1TotalEnergy, data.L2TotalEnergy, data.HomeTotalEnergy,
+             data.L1PowerW, data.L2PowerW, data.HomePowerW);
 }
 
 

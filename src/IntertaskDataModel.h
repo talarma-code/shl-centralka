@@ -62,6 +62,10 @@ struct MeasurementDataPacket {
     uint16_t L1Voltage_x10; 
     uint16_t L2Voltage_x10;
 
+    uint16_t L1PowerW;
+    uint16_t L2PowerW;
+    uint16_t HomePowerW;
+
     uint16_t HeaterEnableForSeconds;
     HeaterStatus heaterRequestedStatus;
 
