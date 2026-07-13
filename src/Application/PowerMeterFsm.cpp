@@ -8,7 +8,7 @@
 PowerMeterFsm::PowerMeterFsm() : orwe520PowerMeter(), sdm120ctPowerMeter() {}
 
 void PowerMeterFsm::setup() {
-    orwe520PowerMeter.setup(236.46f); // Initialize ORWE520 power meter with current energy value
+    orwe520PowerMeter.setup(239.79f); // Initialize ORWE520 power meter with current energy value
     sdm120ctPowerMeter.setup();
 }
 
@@ -29,9 +29,9 @@ PowerMeterFsm::Result PowerMeterFsm::messurementReady(MeasurementData &data) {
  
 PowerMeterFsm::Result PowerMeterFsm::measurmentState(MeasurementData &data) {
     uint32_t l1TotalEnergyWh, l2TotalEnergyWh, homeTotalEnergyWh;
-    if (getPowerData(l1TotalEnergyWh, l2TotalEnergyWh, homeTotalEnergyWh)) {
+    if (getEnergyData(l1TotalEnergyWh, l2TotalEnergyWh, homeTotalEnergyWh)) {
         calculateTotalAndPeriondPowerData(l1TotalEnergyWh, l2TotalEnergyWh, homeTotalEnergyWh, data);
-        getVoltage(data);
+        getVoltageAndPower(data);
         resetCounters();
         return {Next::NextState, INTERVAL_100_MS};
 
@@ -66,7 +66,7 @@ PowerMeterFsm::Result PowerMeterFsm::restartingState() {
     return {Next::Stay, INTERVAL_30_SECONDS_MS};
 }
 
-bool PowerMeterFsm::getPowerData(uint32_t& l1TotalEnergyWh, uint32_t& l2TotalEnergyWh, uint32_t& homeTotalEnergyWh) {
+bool PowerMeterFsm::getEnergyData(uint32_t& l1TotalEnergyWh, uint32_t& l2TotalEnergyWh, uint32_t& homeTotalEnergyWh) {
     float l1EnergyKwh, l2EnergyKwh;
     auto statusL1 = sdm120ctPowerMeter.importActiveEnergy(l1EnergyKwh, L1_POWER_METER_MODBUS_ID);
     delay(60); 
@@ -114,19 +114,36 @@ void PowerMeterFsm::resetL2PowerOff() {
     // TODO: implement L2 power OFF action
 }
 
-void PowerMeterFsm::getVoltage(MeasurementData &data) {
-    float voltageL1, voltageL2;
+void PowerMeterFsm::getVoltageAndPower(MeasurementData &data) {
+    float voltageL1, voltageL2, activePowerL1, activePowerL2;
     if (sdm120ctPowerMeter.voltage(voltageL1, L1_POWER_METER_MODBUS_ID) == SDM120CTPowerMeter::ReadStatus::Ok) {
         data.L1Voltage_x10 = static_cast<uint16_t>(voltageL1 * 10);
     } else {
         data.L1Voltage_x10 = 0;
     }
+
+    delay(60);
+
+    if (sdm120ctPowerMeter.activePower(activePowerL1, L1_POWER_METER_MODBUS_ID) == SDM120CTPowerMeter::ReadStatus::Ok) {
+        data.L1PowerNowW = activePowerL1;
+    } else {
+        data.L1PowerNowW = 0;
+    }
+
     delay(60);
 
     if (sdm120ctPowerMeter.voltage(voltageL2, L2_POWER_METER_MODBUS_ID) == SDM120CTPowerMeter::ReadStatus::Ok) {
         data.L2Voltage_x10 = static_cast<uint16_t>(voltageL2 * 10);
     } else {
         data.L2Voltage_x10 = 0;
+    }
+
+    delay(60);
+
+    if (sdm120ctPowerMeter.activePower(activePowerL2, L2_POWER_METER_MODBUS_ID) == SDM120CTPowerMeter::ReadStatus::Ok) {
+        data.L2PowerNowW = activePowerL2;
+    } else {
+        data.L2PowerNowW = 0;
     }
 }   
 
@@ -170,13 +187,13 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, 
 
     // compute average power (W) = E_Wh / (delta_hours) = E_Wh * 3600000 / deltaMs
     if (deltaMs == 0) {
-        data.L1PowerW = 0;
-        data.L2PowerW = 0;
-        data.HomePowerW = 0;
+        data.L1Power3minW = 0;
+        data.L2Power3minW = 0;
+        data.HomePower3minW = 0;
     } else {
-        data.L1PowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.L1EnergyInLastTimeWindow) * 3600000) / deltaMs);
-        data.L2PowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.L2EnergyInLastTimeWindow) * 3600000) / deltaMs);
-        data.HomePowerW = static_cast<uint16_t>((static_cast<uint64_t>(data.HomeEnergyInLastTimeWindow) * 3600000) / deltaMs);
+        data.L1Power3minW = static_cast<uint16_t>((static_cast<uint64_t>(data.L1EnergyInLastTimeWindow) * 3600000) / deltaMs);
+        data.L2Power3minW = static_cast<uint16_t>((static_cast<uint64_t>(data.L2EnergyInLastTimeWindow) * 3600000) / deltaMs);
+        data.HomePower3minW = static_cast<uint16_t>((static_cast<uint64_t>(data.HomeEnergyInLastTimeWindow) * 3600000) / deltaMs);
     }
 
     _lastMeasurementMs = nowMs;
@@ -184,7 +201,7 @@ void PowerMeterFsm::calculateTotalAndPeriondPowerData(uint32_t l1TotalEnergyWh, 
     LOG_INFO("Powers - L1: %u Wh, L2: %u Wh, Home: %u Wh | Totals - L1: %u Wh, L2: %u Wh, Home: %u Wh | InstPower - L1: %u W, L2: %u W, Home: %u W", 
              data.L1EnergyInLastTimeWindow, data.L2EnergyInLastTimeWindow, data.HomeEnergyInLastTimeWindow, 
              data.L1TotalEnergy, data.L2TotalEnergy, data.HomeTotalEnergy,
-             data.L1PowerW, data.L2PowerW, data.HomePowerW);
+             data.L1Power3minW, data.L2Power3minW, data.HomePower3minW);
 }
 
 

@@ -14,9 +14,11 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
     publishUint(energia_wyprodukowana_l2, m.L2EnergyProduced);
     publishUint(energia_pobrana_grzalka, m.HeaterEnergyConsumed);
     publishUint(energia_pobrana_dom, m.HomeTotalEnergyConsumed);
-    publishUint(moc_chwilowa_wyprodukowana_l1, m.L1PowerW);
-    publishUint(moc_chwilowa_wyprodukowana_l2, m.L2PowerW);
-    publishUint(moc_chwilowa_pobrana_dom, m.HomePowerW);
+    publishUint(moc_chwilowa_wyprodukowana_l1, m.L1Power3minW);
+    publishUint(moc_chwilowa_wyprodukowana_l2, m.L2Power3minW);
+    publishUint(moc_sdm120_l1, m.L1PowerNowW);
+    publishUint(moc_sdm120_l2, m.L2PowerNowW);
+    publishUint(moc_chwilowa_pobrana_dom, m.HomePower3minW);
 
     publishTopicPayload(napiecie_faza_l1, formatVoltageString(m.L1Voltage_x10).c_str());
     publishTopicPayload(napiecie_faza_l2, formatVoltageString(m.L2Voltage_x10).c_str());

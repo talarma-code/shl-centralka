@@ -110,7 +110,7 @@ mqtt:
       state_class: total_increasing
       value_template: "{{ value | float }}"
 
-    - name: "Moc chwilowa wyprodukowana L1"
+    - name: "Moc (3m) L1"
       unique_id: moc_chwilowa_wyprodukowana_l1
       state_topic: "lacko/shl_c1/telemetry/power/L1PowerW"
       unit_of_measurement: "W"
@@ -118,7 +118,7 @@ mqtt:
       state_class: measurement
       value_template: "{{ value | float }}"
 
-    - name: "Moc chwilowa wyprodukowana L2"
+    - name: "Moc (3m) L2"
       unique_id: moc_chwilowa_wyprodukowana_l2
       state_topic: "lacko/shl_c1/telemetry/power/L2PowerW"
       unit_of_measurement: "W"
@@ -126,7 +126,23 @@ mqtt:
       state_class: measurement
       value_template: "{{ value | float }}"
 
-    - name: "Moc chwilowa pobrana dom"
+    - name: "Moc L1"
+      unique_id: moc_sdm120_l1
+      state_topic: "lacko/shl_c1/telemetry/power/L1PowerNowW"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      value_template: "{{ value | float }}"
+
+    - name: "Moc L2"
+      unique_id: moc_sdm120_l2
+      state_topic: "lacko/shl_c1/telemetry/power/L2PowerNowW"
+      unit_of_measurement: "W"
+      device_class: power
+      state_class: measurement
+      value_template: "{{ value | float }}"
+
+    - name: "Moc (3m) dom"
       unique_id: moc_chwilowa_pobrana_dom
       state_topic: "lacko/shl_c1/telemetry/power/HomePowerW"
       unit_of_measurement: "W"

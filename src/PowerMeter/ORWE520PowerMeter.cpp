@@ -86,7 +86,7 @@ float ORWE520PowerMeter::totalEnergyKWh()
     // Round to 3 decimal places for accuracy
     energyKWh = round(energyKWh * 1000.0f) / 1000.0f;
 
-    if (energyKWh >= _lastStoredInNvsEnergyKWh + 0.1f)     //store each 100Wh
+    if (energyKWh >= _lastStoredInNvsEnergyKWh + 0.5f)     //store each 100Wh
     {
         saveEnergyToNvs(energyKWh);
     }

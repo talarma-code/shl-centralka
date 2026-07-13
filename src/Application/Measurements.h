@@ -13,7 +13,10 @@ struct MeasurementData {
     uint16_t L1Voltage_x10; 
     uint16_t L2Voltage_x10;
     // Average power over last measurement window (watts)
-    uint16_t L1PowerW;
-    uint16_t L2PowerW;
-    uint16_t HomePowerW;
+    uint16_t L1Power3minW;
+    uint16_t L2Power3minW;
+    uint16_t HomePower3minW;
+
+    uint16_t L1PowerNowW;
+    uint16_t L2PowerNowW;
 };

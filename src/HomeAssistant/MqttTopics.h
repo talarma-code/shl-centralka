@@ -8,6 +8,10 @@
 
 #define moc_chwilowa_wyprodukowana_l1    "lacko/shl_c1/telemetry/power/L1PowerW"
 #define moc_chwilowa_wyprodukowana_l2    "lacko/shl_c1/telemetry/power/L2PowerW"
+#define moc_sdm120_l1                    "lacko/shl_c1/telemetry/power/L1PowerNowW"
+#define moc_sdm120_l2                    "lacko/shl_c1/telemetry/power/L2PowerNowW"
+
+
 #define moc_chwilowa_pobrana_dom         "lacko/shl_c1/telemetry/power/HomePowerW"
 
 #define napiecie_faza_l1                "lacko/shl_c1/telemetry/voltage/l1"
