@@ -23,6 +23,7 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
     publishTopicPayload(napiecie_faza_l1, formatVoltageString(m.L1Voltage_x10).c_str());
     publishTopicPayload(napiecie_faza_l2, formatVoltageString(m.L2Voltage_x10).c_str());
     publishUint(stan_grzalki, m.heaterRequestedStatus == HeaterStatus::On ? "On" : "Off");
+    publishTopicPayload(centrala_time, formatIsoTimestamp(time(nullptr)).c_str());
 
     _client.loop();
 

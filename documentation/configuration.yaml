@@ -70,7 +70,7 @@ template:
         state_class: measurement
         state: >
           {{
-            states('sensor.moc_chwilowa_pobrana_dom') | float(0) +
+            states('sensor.moc_chwilowa_pobrana_dom') | float(0) -
             states('sensor.pv_moc_chwilowa') | float(0)
           }}
           
@@ -80,7 +80,7 @@ mqtt:
   sensor:
     - name: "Energia wyprodukowana L1"
       unique_id: energia_wyprodukowana_l1
-      state_topic: "lacko/shl_c1/telemetry/power/l1"
+      state_topic: "lacko/shl_c1/telemetry/energy/l1"
       unit_of_measurement: "Wh"
       device_class: energy
       state_class: total_increasing
@@ -88,7 +88,7 @@ mqtt:
 
     - name: "Energia wyprodukowana L2"
       unique_id: energia_wyprodukowana_l2
-      state_topic: "lacko/shl_c1/telemetry/power/l2"
+      state_topic: "lacko/shl_c1/telemetry/energy/l2"
       unit_of_measurement: "Wh"
       device_class: energy
       state_class: total_increasing
@@ -96,7 +96,7 @@ mqtt:
 
     - name: "Energia pobrana grzałka"
       unique_id: energia_pobrana_grzalka
-      state_topic: "lacko/shl_c1/telemetry/power/heater"
+      state_topic: "lacko/shl_c1/telemetry/energy/heater"
       unit_of_measurement: "Wh"
       device_class: energy
       state_class: total_increasing
@@ -104,7 +104,7 @@ mqtt:
 
     - name: "Energia pobrana dom"
       unique_id: energia_pobrana_dom
-      state_topic: "lacko/shl_c1/telemetry/power/home_total"
+      state_topic: "lacko/shl_c1/telemetry/energy/home_total"
       unit_of_measurement: "Wh"
       device_class: energy
       state_class: total_increasing
@@ -112,7 +112,7 @@ mqtt:
 
     - name: "Moc (3m) L1"
       unique_id: moc_chwilowa_wyprodukowana_l1
-      state_topic: "lacko/shl_c1/telemetry/power/L1PowerW"
+      state_topic: "lacko/shl_c1/telemetry/power/l1_3m_w"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -120,7 +120,7 @@ mqtt:
 
     - name: "Moc (3m) L2"
       unique_id: moc_chwilowa_wyprodukowana_l2
-      state_topic: "lacko/shl_c1/telemetry/power/L2PowerW"
+      state_topic: "lacko/shl_c1/telemetry/power/l2_3m_w"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -128,7 +128,7 @@ mqtt:
 
     - name: "Moc L1"
       unique_id: moc_sdm120_l1
-      state_topic: "lacko/shl_c1/telemetry/power/L1PowerNowW"
+      state_topic: "lacko/shl_c1/telemetry/power/l1_now_w"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -136,7 +136,7 @@ mqtt:
 
     - name: "Moc L2"
       unique_id: moc_sdm120_l2
-      state_topic: "lacko/shl_c1/telemetry/power/L2PowerNowW"
+      state_topic: "lacko/shl_c1/telemetry/power/l2_now_w"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -144,7 +144,7 @@ mqtt:
 
     - name: "Moc (3m) dom"
       unique_id: moc_chwilowa_pobrana_dom
-      state_topic: "lacko/shl_c1/telemetry/power/HomePowerW"
+      state_topic: "lacko/shl_c1/telemetry/power/home_3m_w"
       unit_of_measurement: "W"
       device_class: power
       state_class: measurement
@@ -167,6 +167,11 @@ mqtt:
     - name: "Centrala – last seen"
       unique_id: centrala_last_seen
       state_topic: "lacko/shl_c1/status/online"
+      device_class: timestamp
+
+    - name: "Czas urządzenia"
+      unique_id: centrala_time
+      state_topic: "lacko/shl_c1/status/time"
       device_class: timestamp
 
     - name: "Reset reason"
