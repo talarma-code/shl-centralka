@@ -8,7 +8,7 @@
 PowerMeterFsm::PowerMeterFsm() : orwe520PowerMeter(), sdm120ctPowerMeter() {}
 
 void PowerMeterFsm::setup() {
-    orwe520PowerMeter.setup(243.13f); // Initialize ORWE520 power meter with current energy value
+    orwe520PowerMeter.setup(292.1f); // Initialize ORWE520 power meter with current energy value
     sdm120ctPowerMeter.setup();
 }
 

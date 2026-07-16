@@ -316,12 +316,27 @@ void ApplicationTask::handleMeasurementsState(ApplicationMessagePacket evt) {
     }       
 }
 
+
+HeaterStatus ApplicationTask::mapHeaterStatusToHa(uint16_t state) {
+    switch (state) {
+        case 0:
+            return HeaterStatus::Off;
+        case 1:
+            return HeaterStatus::On;
+        case 2:
+            return HeaterStatus::ManualOverride;
+        default:
+            return HeaterStatus::Off; // Default to Off if unknown
+    }
+}
+
+//todo talar: add notification about heater power and heater state, add state "manual On"
 void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
     auto res = heaterFsm.step(evt);
     switch (res.next) {
         case HeaterFsm::Next::RecivedResponse:
             LOG_INFO("Heater action acknowledged, totalPower: %u W, voltage: %u.%u V", res.totalPower, res.voltage / 10, res.voltage % 10);
-            espNowCommunicationErrorNotification(true);
+            espNowCommunicationStatusNotification(true, res.totalPower, mapHeaterStatusToHa(res.heaterRealState)); 
             _state = state::HaNotification;
             //DO NOT RUN TIMER, it is already running (as timeout timer) and will trigger transition to HaNotification state
             break;
@@ -339,15 +354,32 @@ void ApplicationTask::handleHeaterControlState(ApplicationMessagePacket evt) {
     }
 }
 
+void ApplicationTask::espNowCommunicationStatusNotification(bool status, uint16_t totalPower, HeaterStatus heaterStatus)  {
+    SystemMessagePacket haMsg;
+    haMsg.type = SystemDataType::NotifyEspNowEvent;
+    haMsg.payload.espNowEventData.timestamp = (uint32_t)(millis() / 1000UL);
+    haMsg.payload.espNowEventData.heaterCommunicationStatus = status ? HeaterCommunicationStatus::Ok : HeaterCommunicationStatus::NoCommunication;
+    haMsg.payload.espNowEventData.heaterStateFromDevice = heaterStatus;
+    haMsg.payload.espNowEventData.totalPowerFromDevice = totalPower; 
+   
+    if(!haQueueRef.send(haMsg, 50)) {           
+        LOG_ERROR("Critical: HaQueue full, cannot send error notification!!!"); 
+    }
+}
+
 void ApplicationTask::espNowCommunicationErrorNotification(bool status) {
     SystemMessagePacket haMsg;
     haMsg.type = SystemDataType::NotifyEspNowEvent;
     haMsg.payload.espNowEventData.timestamp = (uint32_t)(millis() / 1000UL);
     haMsg.payload.espNowEventData.heaterCommunicationStatus = status ? HeaterCommunicationStatus::Ok : HeaterCommunicationStatus::NoCommunication;
+   
     if(!haQueueRef.send(haMsg, 50)) {           
         LOG_ERROR("Critical: HaQueue full, cannot send error notification!!!"); 
     }
 }
+
+
+
 
 void ApplicationTask::handleHaNotificationState(ApplicationMessagePacket evt) {
     if (evt.type == ApplicationCommandType::Timer) {

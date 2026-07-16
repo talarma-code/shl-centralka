@@ -68,7 +68,7 @@ void HaCommunicationTask::loop()
                 }
                 else if (msg.type == SystemDataType::NotifyEspNowEvent)
                 {
-                    if (!mqttPublisher.publishEspNowEvent(msg.payload.espNowEventData.heaterCommunicationStatus))
+                    if (!mqttPublisher.publishEspNowEvent(msg.payload.espNowEventData))
                     {
                         LOG_ERROR("Publish esp-now event failed - reconnecting...");
                         findReasonAndReconnect();

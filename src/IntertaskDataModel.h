@@ -24,7 +24,8 @@ enum class MeasurementDataType : uint8_t {
 
 enum class HeaterStatus : uint8_t {
     Off = 0,
-    On = 1
+    On = 1,
+    ManualOverride = 2
 };
 
 enum class HeaterCommunicationStatus : uint8_t {
@@ -78,6 +79,8 @@ struct MeasurementDataPacket {
 struct EspNowEventPacket {
     uint32_t timestamp;
     HeaterCommunicationStatus heaterCommunicationStatus;
+    HeaterStatus heaterStateFromDevice;
+    uint16_t totalPowerFromDevice;
 };
 
 struct SystemMessagePacket {

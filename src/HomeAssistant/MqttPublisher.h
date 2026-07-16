@@ -11,7 +11,7 @@ public:
 
     bool publishPacket(const MeasurementDataPacket& m);
     bool publishResetReason();
-    bool publishEspNowEvent(HeaterCommunicationStatus heaterCommunicationStatus);
+    bool publishEspNowEvent(EspNowEventPacket espNowEventPacket);
 
     // Publish device online heartbeat with local timestamp
     bool publishOnlineHeartbeat(uint32_t epoch);
@@ -25,6 +25,8 @@ private:
     void publishUint(const char* topic, const char* value);
 
     bool publishTopicPayload(const char* topic, const char* payload);
+    const char* heaterRequestedStatus(HeaterStatus status) const;
+    
 
     PubSubClient& _client;
     uint32_t _punlishFailureCount = 0;

@@ -16,6 +16,7 @@ public:
         uint16_t delayMs;
         uint16_t totalPower;
         uint16_t voltage;
+        uint16_t heaterRealState;
     };
 
     Result step(const ApplicationMessagePacket& evt);

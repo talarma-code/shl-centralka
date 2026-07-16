@@ -26,6 +26,7 @@ void ORWE520PowerMeter::setup(float meterEnergyFromSd)
         .counter_l_lim = 0,
         .unit = PCNT_UNIT,
         .channel = PCNT_CHANNEL_0,
+        
     };
 
     // Initialize PCNT unit
@@ -79,7 +80,11 @@ float ORWE520PowerMeter::totalEnergyKWh()
     pcnt_counter_clear(PCNT_UNIT);                          // Clear the counter to avoid overflow and prepare for the next reading 
     pcnt_counter_resume(PCNT_UNIT);                         // Resume counting for the next interval
 
-    _totalPulseCount += currentCount;
+    if (currentCount > 0)
+    {
+        _totalPulseCount += currentCount;
+    }
+   
 
     float energyKWh = static_cast<float>(_totalPulseCount) * ENERGY_MULTIPLY;
 

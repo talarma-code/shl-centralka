@@ -63,6 +63,8 @@ private:
     static const char* stateToString(state s);
     static const char* commandTypeToString(ApplicationCommandType type);
     void espNowCommunicationErrorNotification(bool status);
+    void espNowCommunicationStatusNotification(bool status, uint16_t totalPower, HeaterStatus heaterState);
+    HeaterStatus mapHeaterStatusToHa(uint16_t state);
 
     uint32_t haQueueFullStreak = 0; 
     uint32_t rtcRetrayCount = 0;

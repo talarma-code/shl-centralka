@@ -12,7 +12,7 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
 
     publishUint(energia_wyprodukowana_l1, m.L1EnergyProduced);
     publishUint(energia_wyprodukowana_l2, m.L2EnergyProduced);
-    publishUint(energia_pobrana_grzalka, m.HeaterEnergyConsumed);
+    // publishUint(energia_pobrana_grzalka, m.HeaterEnergyConsumed);
     publishUint(energia_pobrana_dom, m.HomeTotalEnergyConsumed);
     publishUint(moc_chwilowa_wyprodukowana_l1, m.L1Power3minW);
     publishUint(moc_chwilowa_wyprodukowana_l2, m.L2Power3minW);
@@ -22,7 +22,7 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
 
     publishTopicPayload(napiecie_faza_l1, formatVoltageString(m.L1Voltage_x10).c_str());
     publishTopicPayload(napiecie_faza_l2, formatVoltageString(m.L2Voltage_x10).c_str());
-    publishUint(stan_grzalki, m.heaterRequestedStatus == HeaterStatus::On ? "On" : "Off");
+    //publishUint(stan_grzalki, heaterRequestedStatus(m.heaterRequestedStatus));
     publishTopicPayload(centrala_time, formatIsoTimestamp(time(nullptr)).c_str());
 
     _client.loop();
@@ -35,6 +35,21 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
     return true;
 }
 
+const char* MqttPublisher::heaterRequestedStatus(HeaterStatus status) const {
+    switch (status) {
+        case HeaterStatus::Off:
+            return "Off";
+        case HeaterStatus::On:
+            return "On";
+        case HeaterStatus::ManualOverride:
+            return "ManualOverride";
+        default:
+            return "Unknown";
+    }
+}
+
+
+
 bool MqttPublisher::publishResetReason() {
     _publishSuccessCount = 0;
     _punlishFailureCount = 0;
@@ -43,6 +58,7 @@ bool MqttPublisher::publishResetReason() {
 
     publishTopicPayload(centrala_reset_reason, lastResetReason());
     publishUint(centrala_reset_code, lastResetReasonCode());
+    
 
     _client.loop();
     LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);
@@ -53,17 +69,15 @@ bool MqttPublisher::publishResetReason() {
     return true;
 }
 
-bool MqttPublisher::publishEspNowEvent(HeaterCommunicationStatus heaterCommunicationStatus) {
+bool MqttPublisher::publishEspNowEvent(EspNowEventPacket espNowEventPacket) {
     _publishSuccessCount = 0;
     _punlishFailureCount = 0;
     _client.loop();
     delay(60);
 
-    if (heaterCommunicationStatus == HeaterCommunicationStatus::Ok) {
-        publishTopicPayload(status_komunikacji_grzalka, "OK");
-    } else {
-        publishTopicPayload(status_komunikacji_grzalka, "No communication");
-    }
+    publishTopicPayload(status_komunikacji_grzalka, heaterRequestedStatus(espNowEventPacket.heaterStateFromDevice));
+    publishUint(energia_pobrana_grzalka, espNowEventPacket.totalPowerFromDevice);
+
 
     _client.loop();
     LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);

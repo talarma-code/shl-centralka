@@ -25,7 +25,7 @@ HeaterFsm::Result HeaterFsm::handleIdleState(const ApplicationMessagePacket& evt
         sendCommand(_expectedHeaterState);
         return {Next::Stay, INTERVAL_5_SECONDS_MS, 0, 0};
     }
-    return  {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
+    return  {Next::Stay, DO_NOT_RUN_TIMER, 0, 0, 0};
 }
 
 HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessagePacket& evt) {
@@ -35,27 +35,27 @@ HeaterFsm::Result HeaterFsm::handleWaitingResponseState(const ApplicationMessage
         uint16_t voltage;
         if (handleResponse(pkt, totalPower, voltage)) {
             _state = State::Idle;
-            return {Next::RecivedResponse, DO_NOT_RUN_TIMER, totalPower, voltage};
+            return {Next::RecivedResponse, DO_NOT_RUN_TIMER, totalPower, voltage, pkt.relay1};
         }
         else{
             // shout be eadge case, we received response but it is not what we expected,
             // so we will retry as standard timeout case - just wait for timer and then resend command
             LOG_ERROR("Heater return unexpected state, retrying... (retry #%u)", _retryCount);
-            return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
+            return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0, 0};
         }
     }
 
     if (evt.type == ApplicationCommandType::Timer) {
         if (_retryCount >= 3) {
             _state = State::Idle;
-            return {Next::Error, INTERVAL_100_MS, 0, 0};
+            return {Next::Error, INTERVAL_100_MS, 0, 0, 0};
         }
         sendCommand(_expectedHeaterState);
-        return {Next::Stay, INTERVAL_5_SECONDS_MS, 0, 0};
+        return {Next::Stay, INTERVAL_5_SECONDS_MS, 0, 0, 0};
     }
 
     LOG_ERROR("HeaterFsm::handleWaitingResponseState - unexpected event type: %u", evt.type);
-    return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0};
+    return {Next::Stay, DO_NOT_RUN_TIMER, 0, 0, 0};
 
 }
 
@@ -66,7 +66,7 @@ HeaterFsm::Result HeaterFsm::step(const ApplicationMessagePacket& evt) {
         case State::WaitingResponse:
             return handleWaitingResponseState(evt);
         default:
-            return {Next::Error, INTERVAL_100_MS, 0, 0};
+            return {Next::Error, INTERVAL_100_MS, 0, 0, 0};
     }
 }
 
