@@ -37,22 +37,6 @@ template:
             states('sensor.energia_wyprodukowana_l1') | float(0) +
             states('sensor.energia_wyprodukowana_l2') | float(0)
           }}
-      - name: "Energia oddana do sieci"
-        unique_id: energia_oddana_do_sieci
-        unit_of_measurement: "Wh"
-        device_class: energy
-        state_class: total_increasing
-        state: >
-          {{
-            [
-              (
-                states('sensor.energia_wyprodukowana_pv') | float(0)
-                -
-                states('sensor.energia_pobrana_dom') | float(0)
-              ),
-              0
-            ] | max
-          }}
       - name: "PV moc chwilowa"
         unique_id: pv_moc_chwilowa
         unit_of_measurement: "W"
@@ -73,8 +57,24 @@ template:
             states('sensor.moc_chwilowa_pobrana_dom') | float(0) -
             states('sensor.pv_moc_chwilowa') | float(0)
           }}
-          
-      
+
+      - name: "Moc pobrana z sieci"
+        unique_id: grid_import_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set p = states('sensor.bilans_mocy') | float(0) %}
+          {{ [p, 0] | max }}
+
+      - name: "Moc oddana do sieci"
+        unique_id: grid_export_power
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set p = states('sensor.bilans_mocy') | float(0) %}
+          {{ [-p, 0] | max }}
 
 mqtt:
   sensor:
@@ -208,3 +208,37 @@ mqtt:
       payload_off: "Off"
       device_class: heat
       icon: mdi:radiator
+
+sensor:
+  - platform: integration
+    source: sensor.moc_pobrana_z_sieci
+    name: "Energia pobrana z sieci"
+    unique_id: grid_import_energy
+    unit_prefix: k
+    round: 3
+    method: left
+
+  - platform: integration
+    source: sensor.moc_oddana_do_sieci
+    name: "Energia oddana do sieci"
+    unique_id: grid_export_energy
+    unit_prefix: k
+    round: 3
+    method: left 
+
+utility_meter:
+  energia_pobrana_dzien:
+    source: sensor.energia_pobrana_z_sieci
+    cycle: daily
+
+  energia_oddana_dzien:
+    source: sensor.energia_oddana_do_sieci
+    cycle: daily
+
+  energia_pobrana_miesiac:
+    source: sensor.energia_pobrana_z_sieci
+    cycle: monthly
+
+  energia_oddana_miesiac:
+    source: sensor.energia_oddana_do_sieci
+    cycle: monthly

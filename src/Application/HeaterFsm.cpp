@@ -87,11 +87,10 @@ void HeaterFsm::sendPacket(const ShlProtocolPacket& packet) const {
 
 bool HeaterFsm::handleResponse(const ShlProtocolPacket& pkt, uint16_t& totalPower, uint16_t& voltage) {
     if (pkt.commandId == SHL_PROTOCOL_CMD_REPORT_ALL || pkt.commandId == SHL_PROTOCOL_CMD_REPORT_POWER || pkt.commandId == SHL_PROTOCOL_CMD_REPORT_VOLTAGE) {
-        bool reportedState = (pkt.relay1 != 0);
         //we check only first relay state, second is not used
         totalPower = pkt.totalPower;
         voltage = pkt.voltage;
-        return reportedState == _expectedHeaterState;
+        return true;
     }
     LOG_ERROR("HeaterFsm::handleResponse - unexpected commandId: %u", pkt.commandId);
     return false;

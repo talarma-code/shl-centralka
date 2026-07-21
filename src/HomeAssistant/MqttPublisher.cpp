@@ -75,9 +75,14 @@ bool MqttPublisher::publishEspNowEvent(EspNowEventPacket espNowEventPacket) {
     _client.loop();
     delay(60);
 
-    publishTopicPayload(status_komunikacji_grzalka, heaterRequestedStatus(espNowEventPacket.heaterStateFromDevice));
-    publishUint(energia_pobrana_grzalka, espNowEventPacket.totalPowerFromDevice);
 
+    if (espNowEventPacket.heaterCommunicationStatus == HeaterCommunicationStatus::Ok) {
+        publishTopicPayload(status_komunikacji_grzalka, "Ok");
+        publishTopicPayload(stan_grzalki, heaterRequestedStatus(espNowEventPacket.heaterStateFromDevice));
+        publishUint(energia_pobrana_grzalka, espNowEventPacket.totalPowerFromDevice);
+    } else {
+        publishTopicPayload(status_komunikacji_grzalka, "NoCommunication");
+    }
 
     _client.loop();
     LOG_DEBUG("MQTT publish: success=%d, fail=%d", _publishSuccessCount, _punlishFailureCount);

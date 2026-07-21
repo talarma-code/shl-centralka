@@ -186,9 +186,6 @@ void ApplicationTask::loop() {
             haQueueRef.send(drMsg);
         }
 
-
-
-
         //Modbus test section 
 
         if (characterRecived == '1') {
