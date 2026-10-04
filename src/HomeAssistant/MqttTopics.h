@@ -3,6 +3,7 @@
 // Home Assistant MQTT topic definitions using the YAML unique_id values as macro names
 #define energia_wyprodukowana_l1          "lacko/shl_c1/telemetry/energy/l1"
 #define energia_wyprodukowana_l2          "lacko/shl_c1/telemetry/energy/l2"
+#define energia_wyprodukowana_pv          "lacko/shl_c1/telemetry/energy/pv"
 #define energia_pobrana_grzalka           "lacko/shl_c1/telemetry/energy/heater"
 #define energia_pobrana_dom               "lacko/shl_c1/telemetry/energy/home_total"
 

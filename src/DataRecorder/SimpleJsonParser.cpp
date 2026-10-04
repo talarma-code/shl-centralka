@@ -48,6 +48,7 @@ bool SimpleJsonParser::deserializeMeasurement(const StaticString192& json, Measu
 
     out.L1EnergyProduced = extractUInt("\"L1TotalEnergy\"");
     out.L2EnergyProduced = extractUInt("\"L2TotalEnergy\"");
+    out.PvEnergyProduced = extractUInt("\"PVTotalEnergy\"");
     out.HeaterEnergyConsumed = extractUInt("\"HeaterEnergyConsumed\"");
     out.HomeTotalEnergyConsumed = extractUInt("\"HomeTotalEnergyConsumed\"");
     out.L1Voltage_x10 = (uint16_t)extractUInt("\"L1Voltage_x10\"");

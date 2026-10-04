@@ -32,11 +32,17 @@ template:
         unit_of_measurement: "Wh"
         device_class: energy
         state_class: total_increasing
+
         state: >
-          {{
-            states('sensor.energia_wyprodukowana_l1') | float(0) +
-            states('sensor.energia_wyprodukowana_l2') | float(0)
-          }}
+          {% set l1 = states('sensor.energia_wyprodukowana_l1') %}
+          {% set l2 = states('sensor.energia_wyprodukowana_l2') %}
+
+          {% if is_number(l1) and is_number(l2) %}
+            {{ l1 | float + l2 | float }}
+          {% else %}
+            {{ this.state }}
+          {% endif %}
+
       - name: "PV moc chwilowa"
         unique_id: pv_moc_chwilowa
         unit_of_measurement: "W"

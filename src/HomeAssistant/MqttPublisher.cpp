@@ -10,10 +10,25 @@ bool MqttPublisher::publishPacket(const MeasurementDataPacket& m) {
     _client.loop();
     delay(60);
 
-    publishUint(energia_wyprodukowana_l1, m.L1EnergyProduced);
-    publishUint(energia_wyprodukowana_l2, m.L2EnergyProduced);
+
+    if (m.L1EnergyProduced > 0) {
+        publishUint(energia_wyprodukowana_l1, m.L1EnergyProduced);
+    }
+    if (m.L2EnergyProduced > 0) {
+        publishUint(energia_wyprodukowana_l2, m.L2EnergyProduced);
+    }
+    if (m.PvEnergyProduced > 0) {
+        publishUint(energia_wyprodukowana_pv, m.PvEnergyProduced);
+    }
+
     // publishUint(energia_pobrana_grzalka, m.HeaterEnergyConsumed);
-    publishUint(energia_pobrana_dom, m.HomeTotalEnergyConsumed);
+    if (m.HeaterEnergyConsumed > 0) {
+        publishUint(energia_pobrana_grzalka, m.HeaterEnergyConsumed);
+    }
+    if (m.HomeTotalEnergyConsumed > 0) {
+        publishUint(energia_pobrana_dom, m.HomeTotalEnergyConsumed);
+    }
+
     publishUint(moc_chwilowa_wyprodukowana_l1, m.L1Power3minW);
     publishUint(moc_chwilowa_wyprodukowana_l2, m.L2Power3minW);
     publishUint(moc_sdm120_l1, m.L1PowerNowW);

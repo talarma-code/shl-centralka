@@ -57,6 +57,7 @@ struct MeasurementDataPacket {
 
     uint32_t L1EnergyProduced;
     uint32_t L2EnergyProduced;
+    uint32_t PvEnergyProduced;
     uint32_t HeaterEnergyConsumed;
     uint32_t HomeTotalEnergyConsumed;
 

@@ -444,6 +444,7 @@ void ApplicationTask::collectDataForHaNotification(const MeasurementData& data, 
     lastMeasurementData.timestamp = (uint32_t)(millis() / 1000UL);
     lastMeasurementData.L1EnergyProduced = data.L1TotalEnergy;
     lastMeasurementData.L2EnergyProduced = data.L2TotalEnergy;
+    lastMeasurementData.PvEnergyProduced = data.L1TotalEnergy +  data.L2TotalEnergy;
     lastMeasurementData.HomeTotalEnergyConsumed = data.HomeTotalEnergy;
     lastMeasurementData.L1Voltage_x10 = data.L1Voltage_x10;
     lastMeasurementData.L2Voltage_x10 = data.L2Voltage_x10;
