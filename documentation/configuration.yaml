@@ -9,15 +9,44 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.18.0.8
+
 influxdb:
   api_version: 2
   host: 127.0.0.1
   port: 8086
   token: supertalardmin
   organization: homeassistant
-  bucket: ha
+  bucket: home_telemetry
   ssl: false
   verify_ssl: false
+
+  override_measurement: ems
+
+  include:
+    entities:
+      - sensor.energia_wyprodukowana_l1
+      - sensor.energia_wyprodukowana_l2
+      - sensor.energia_wyprodukowana_pv_ems
+      - sensor.energia_pobrana_grzalka
+      - sensor.energia_pobrana_dom
+      - sensor.moc_chwilowa_wyprodukowana_l1
+      - sensor.moc_chwilowa_wyprodukowana_l2
+      - sensor.moc_sdm120_l1
+      - sensor.moc_sdm120_l2
+      - sensor.moc_chwilowa_pobrana_dom
+      - sensor.napiecie_faza_l1
+      - sensor.napiecie_faza_l2
+      - sensor.centrala_last_seen
+      - sensor.centrala_time
+      - sensor.centrala_reset_reason
+      - sensor.centrala_reset_code
+      - sensor.status_komunikacji_grzalka
+      - sensor.stan_grzalki
+      - sensor.czas_pracy_grzalki
 
 template:
   - binary_sensor:
@@ -207,6 +236,15 @@ mqtt:
       device_class: duration
       state_class: measurement
 
+    - name: "Energia wyprodukowana PV EMS"
+      unique_id: energia_wyprodukowana_pv_ems
+      state_topic: "lacko/shl_c1/telemetry/energy/pv"
+      unit_of_measurement: "Wh"
+      device_class: energy
+      state_class: total_increasing
+      value_template: "{{ value | float }}"
+      force_update: true
+
   binary_sensor:
     - name: "Stan grzałki"
       state_topic: "lacko/shl_c1/telemetry/heater/requested_status"
@@ -230,7 +268,7 @@ sensor:
     unique_id: grid_export_energy
     unit_prefix: k
     round: 3
-    method: left 
+    method: left
 
 utility_meter:
   energia_pobrana_dzien:
